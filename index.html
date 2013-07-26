@@ -25,22 +25,16 @@
                                       
         </script>
         <script>
-                                        var map;
+                                var map;
                                 var canvasLayer;
                                 var gl;
 
                                 var pointProgram;
                                 var pointArrayBuffer, squareVertexPositionBuffer;
-                                var POINT_COUNT = 21;
-
-                                var MIN_X = 40;
-                                var MAX_X = 80;
-                                var MIN_Y = 88;
-                                var MAX_Y = 109;
                                 var RegionCoords0 = [];
                                 var RegionCoords1 = [];
                                 var TargetCoords1 = [];
-                                var HoleCoords1 = [];
+                                
 
                                 var InitPoly = [
 
@@ -353,9 +347,6 @@ In steps:
                                 function updateData()
                                 {
                                     var targetcoords = target_data(2);
-
-                                    var holecoords = hole_data(2, 0);
-                                    var holecoords1 = hole_data(2, 1);
                                     var targetcoordsForArea = target_data(3);
                                     var centroid = computePolygonCentroid(RegionCoords1, RegionCoords1.length);
                                     var step = 0.0005;
@@ -878,7 +869,11 @@ float snoise(vec3 v)
 	  */
       //  gl_FragColor = vec4( 0.0,  0.0,  1.0,  0.7 );
       }
-    }	
+    }
+	
+	
+	
+	
   </script>
     </head>
     
