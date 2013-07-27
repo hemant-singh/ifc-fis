@@ -40,6 +40,21 @@
                                     if (x == 1) return Coords1;
                                     else return Coords2;
                                 }
+								
+								
+								
+								function convert_obeject_data(data)//This function extracts lat lng from drawn objects
+                                {
+								var Coords1 = [];
+                                        
+                                    for (i = 0,j=0; i < data.length; i++,j=j+2)
+                                    {
+                                        Coords1[j]=data[i].jb;
+                                        Coords1[j+1]=data[i].kb;
+                                    }
+									return Coords1;
+                                    
+                                }
 
 /*
 funtion isPointInPoly Adapted from: [http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html] 
