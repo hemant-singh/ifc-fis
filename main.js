@@ -82,6 +82,7 @@
 
                                 
                                 var bufferCounter = 0;
+								var attributeLoc;
 
                                 function load_in_gl(rawData2, attribname)
                                 {
@@ -91,11 +92,12 @@
                                     {
                                         pointArrayBuffer = gl.createBuffer();
                                         bufferCounter++;
+										attributeLoc = gl.getAttribLocation(pointProgram, attribname);
                                     }
                                     gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
                                     gl.bufferData(gl.ARRAY_BUFFER, rawData2, gl.STATIC_DRAW);
                                     // enable the 'worldCoord' attribute in the shader to receive buffer
-                                    var attributeLoc = gl.getAttribLocation(pointProgram, attribname);
+                                  
                                     gl.enableVertexAttribArray(attributeLoc);
                                     // tell webgl how buffer is laid out (pairs of x,y coords)
                                     gl.vertexAttribPointer(attributeLoc, 3, gl.FLOAT, false, 0, 0);
@@ -195,7 +197,8 @@ In steps:
 4. Using these new points we form the new polygon
 */
 
-                                var testangle = 1;
+                               // var testangle = 1;
+								var step = 0.0005;
                                 var area_diff = 0; //this variabvle stores the amount of area covered by morphing polygon in percentage and is used to stop animation
 
                                 function updateData()
@@ -206,16 +209,21 @@ In steps:
                                     var holecoords1 = hole_data(2, 1);
                                     var targetcoordsForArea = target_data(3);
                                     var centroid = computePolygonCentroid(RegionCoords1, RegionCoords1.length);
-                                    var step = 0.0005;
+                                    
                                     //This 
                                     var newCoords = [];
                                     var counter = 0;
                                     var arrayForArea = [] //This array is used for calculating area in the end
                                     //var i1=0;//this counter is used for area array increment
+									var start = new Date().getTime();
                                     for (i = 0; i < RegionCoords1.length; i++)
                                     {
                                         var y, x, m, slope, x1, x2, y1, y2, c, j = 0;
-
+										if(RegionCoords1[i].over==true)
+										{
+										newCoords.push(RegionCoords1[i]);
+										continue;
+										}
                                         if (i == RegionCoords1.length - 1) j = 0;
                                         else j = i + 1;
 
@@ -280,9 +288,12 @@ In steps:
                                     RegionCoords1 = newCoords.splice(0);
                                     var delete_distance = 0.001;
                                     var add_distance = 0.005;
+									var mid1 = new Date().getTime();
                                     for (i = 0; i < RegionCoords1.length; i++)
                                     {
 
+										if(RegionCoords1.over==true)
+										continue;
                                         if (i == RegionCoords1.length - 1) j = 0;
                                         else j = i + 1;
                                         if (Math.sqrt(Math.pow(RegionCoords1[i].y - RegionCoords1[j].y, 2) + Math.pow(RegionCoords1[i].x - RegionCoords1[j].x, 2)) < delete_distance)
@@ -290,7 +301,7 @@ In steps:
                                             RegionCoords1.splice(i, 1);
                                             continue;
                                         }
-
+											
                                         //If two consecutive points are too far away in the polygon, we add a point to smoothen the morphing
                                         if (Math.sqrt(Math.pow(RegionCoords1[i].y - RegionCoords1[j].y, 2) + Math.pow(RegionCoords1[i].x - RegionCoords1[j].x, 2)) > add_distance)
                                         {
@@ -301,6 +312,11 @@ In steps:
                                             i++;
                                         }
                                     }
+									var mid2 = new Date().getTime();
+									time1=mid1-start;
+									time2=mid2-mid1;
+									console.log(time1+"    "+time2+"  "+RegionCoords1.length); 
+									
                                 }
 
                                 
@@ -325,9 +341,16 @@ In steps:
 
                                         }
                                         else
-                                        {
+                                        {	//console.log(RegionCoords1.length);
+										
+										   // var start = new Date().getTime();
                                             converted_coord = loadData(RegionCoords1);
+											//var mid = new Date().getTime();
                                             updateData();
+											//var end = new Date().getTime();
+											//var time1=mid-start;
+											//var time2=end-mid;
+										//console.log(time1+"   "+time2);	
                                         }
 
                                         var i = 0;
