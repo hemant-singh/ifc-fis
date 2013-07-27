@@ -18,7 +18,7 @@
                                 {
                                     // initialize the map
                                     var mapOptions = {
-                                        zoom: 11,
+                                        zoom: 9,
                                         center: new google.maps.LatLng(24.663824, 88.015782),
                                         mapTypeId: google.maps.MapTypeId.TERRAIN,
                                         styles: [
@@ -93,8 +93,10 @@
                                         pointArrayBuffer = gl.createBuffer();
                                         bufferCounter++;
 										attributeLoc = gl.getAttribLocation(pointProgram, attribname);
-                                    }
-                                    gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
+										gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
+										pointProgram.pTimeUniform = gl.getUniformLocation(pointProgram, "time");
+									}
+                                    
                                     gl.bufferData(gl.ARRAY_BUFFER, rawData2, gl.STATIC_DRAW);
                                     // enable the 'worldCoord' attribute in the shader to receive buffer
                                   
@@ -102,7 +104,7 @@
                                     // tell webgl how buffer is laid out (pairs of x,y coords)
                                     gl.vertexAttribPointer(attributeLoc, 3, gl.FLOAT, false, 0, 0);
 
-                                    pointProgram.pTimeUniform = gl.getUniformLocation(pointProgram, "time");
+                                    
                                     var time = (new Date()).getTime();
                                     gl.uniform1f(pointProgram.pTimeUniform, (time - startTime) / 1000.0);
                                 }
@@ -215,7 +217,7 @@ In steps:
                                     var counter = 0;
                                     var arrayForArea = [] //This array is used for calculating area in the end
                                     //var i1=0;//this counter is used for area array increment
-									var start = new Date().getTime();
+									//var start = new Date().getTime();
                                     for (i = 0; i < RegionCoords1.length; i++)
                                     {
                                         var y, x, m, slope, x1, x2, y1, y2, c, j = 0;
@@ -240,6 +242,7 @@ In steps:
                                         }
                                         m = -1 / slope;
                                         //slope of normal
+										//var step2=Math.sqrt(Math.pow(RegionCoords1[i].y - RegionCoords1[j].y, 2) + Math.pow(RegionCoords1[i].x - RegionCoords1[j].x, 2))/2;
                                         x1 = x + step * Math.cos(Math.atan(m));
                                         //Two x are calculated because there will be two points at distance step, one inside the current polygon and one outside.
                                         x2 = x - step * Math.cos(Math.atan(m));
@@ -282,23 +285,23 @@ In steps:
 
                                     }
 
-                                    area_diff = ((PolyK.GetArea(arrayForArea)) / PolyK.GetArea(targetcoordsForArea) * 100);
+                                  //  area_diff = ((PolyK.GetArea(arrayForArea)) / PolyK.GetArea(targetcoordsForArea) * 100);
                                    // console.log(area_diff);
-                                    //area_diff=99;
+                                    area_diff=99;
                                     RegionCoords1 = newCoords.splice(0);
                                     var delete_distance = 0.001;
                                     var add_distance = 0.005;
-									var mid1 = new Date().getTime();
+									//var mid1 = new Date().getTime();
                                     for (i = 0; i < RegionCoords1.length; i++)
                                     {
 
-										if(RegionCoords1.over==true)
-										continue;
+										
                                         if (i == RegionCoords1.length - 1) j = 0;
                                         else j = i + 1;
                                         if (Math.sqrt(Math.pow(RegionCoords1[i].y - RegionCoords1[j].y, 2) + Math.pow(RegionCoords1[i].x - RegionCoords1[j].x, 2)) < delete_distance)
                                         {
                                             RegionCoords1.splice(i, 1);
+											RegionCoords1.splice(i, 1);
                                             continue;
                                         }
 											
@@ -312,10 +315,10 @@ In steps:
                                             i++;
                                         }
                                     }
-									var mid2 = new Date().getTime();
-									time1=mid1-start;
-									time2=mid2-mid1;
-									console.log(time1+"    "+time2+"  "+RegionCoords1.length); 
+									//var mid2 = new Date().getTime();
+									//time1=mid1-start;
+									//time2=mid2-mid1;
+									//console.log(time1+"    "+time2+"  "+RegionCoords1.length); 
 									
                                 }
 
@@ -332,7 +335,7 @@ In steps:
                                         requestAnimFrame(tick);
 
                                         var converted_coord = [];
-                                        if (!isNaN(parseFloat(area_diff)) && isFinite(area_diff) && area_diff > 99.6)
+                                        if (!isNaN(parseFloat(area_diff)) && isFinite(area_diff) && area_diff > 99.4)
                                         {
                                             //console.log(area_diff);
                                             var targetcoords = target_data(2);
@@ -367,11 +370,17 @@ In steps:
                                         //var newArray = combineArray(converted_coord, converted_coord_hole1);
                                         POINT_COUNT = (newArray.length) / 3;
                                         DRAW_COUNT = (converted_coord.length) / 3;
+										//var start = new Date().getTime();
                                         load_in_gl(newArray, 'worldCoord');
+										//var mid = new Date().getTime();
                                         if (debug_counter++ < 1) console.log(POINT_COUNT + "   " + DRAW_COUNT + " " + newArray.length);
 
                                         drawScene();
-                                    }
+										/*var end = new Date().getTime();
+										var time1=mid-start;
+										var time2=end-mid;
+										console.log(time1+"   "+time2);	
+                                    */}
 
                                 }
 
