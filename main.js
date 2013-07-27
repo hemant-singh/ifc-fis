@@ -301,7 +301,7 @@ In steps:
                                         if (Math.sqrt(Math.pow(RegionCoords1[i].y - RegionCoords1[j].y, 2) + Math.pow(RegionCoords1[i].x - RegionCoords1[j].x, 2)) < delete_distance)
                                         {
                                             RegionCoords1.splice(i, 1);
-											RegionCoords1.splice(i, 1);
+											
                                             continue;
                                         }
 											
