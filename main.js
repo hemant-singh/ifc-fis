@@ -12,6 +12,10 @@
                                 var pixelsToWebGLMatrix = new Float32Array(16);
                                 var mapMatrix = new Float32Array(16);
                                 var startTime;
+								var object_counter=0;
+								var object_ref_array=[];
+								var object_poly_array=[];
+														
 								
 								
 								  function init()
@@ -58,9 +62,12 @@
                                     createShaderProgram();
 									
 									var polyOptions = {
-										  strokeWeight: 0,
-										  fillOpacity: 0.7,
-										  editable: true
+										  
+										  fillOpacity: 0.5,
+										  strokeColor: '#5E2612',
+                                            strokeOpacity: 1,
+                                            strokeWeight: 2,
+										  
 										};
 										// Creates a drawing manager attached to the map that allows the user to draw
 										// markers, lines, and shapes.
@@ -89,8 +96,9 @@
 											newShape.type = e.type;
 											google.maps.event.addListener(newShape, 'click', function() {
 											  setSelection(newShape);
+											  //console.log(newShape.getPath());
 											});
-											setSelection(newShape);
+											
 										 
 										 }
 										});
@@ -100,6 +108,15 @@
 										google.maps.event.addListener(drawingManager, 'drawingmode_changed', clearSelection);
 										google.maps.event.addListener(map, 'click', clearSelection);
 										google.maps.event.addDomListener(document.getElementById('delete-button'), 'click', deleteSelectedShape);
+										drawingManager.setDrawingMode(null);
+										
+										google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
+										   {
+										   object_ref_array[object_counter]=event.overlay;
+											object_poly_array[object_counter]=event.overlay.getPath().getArray();
+											object_counter++;
+										  }
+										});
 
 										buildColorPalette();
 									
@@ -163,6 +180,9 @@
 
                                 function initial_data()
                                 {
+								drawingManager.setOptions({
+									  drawingControl: false
+									});
                                     var mapProjection = map.getProjection();
                                     RegionCoords1 = initialPoly_data(2);
 /*Now we will increase the number of points to somewhere 10 times of current coordinates so that to smooothen the morphing.
@@ -378,8 +398,25 @@ In steps:
                                 var num_of_holes = HolePoly.length;
                                 var animation_flag = 0;
 								
+								function attach_objects()
+								{
+								var i=0,c=HolePoly.length,d=object_poly_array.length;
+								
+								for(i=0;i<d;i++)
+								{
+								console.log(object_poly_array[i]);
+								var x=convert_obeject_data(object_poly_array[i]);
+								console.log(x);
+								HolePoly[c+i]=x.slice(0);								
+								}
+								console.log(HolePoly);
+								
+								
+								}
+								
 								function start_moprhing()
 								{
+								attach_objects();
 								initial_data(); //initializing data
                                         updateData();
                                         i++;
@@ -427,6 +464,7 @@ In steps:
                                         }
 
                                         var i = 0;
+										num_of_holes = HolePoly.length;
                                         var converted_coord_hole_array = [];
                                         for (i = 0; i < num_of_holes; i++)
                                         {
