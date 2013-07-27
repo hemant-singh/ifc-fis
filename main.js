@@ -21,6 +21,8 @@
                                         zoom: 9,
                                         center: new google.maps.LatLng(24.663824, 88.015782),
                                         mapTypeId: google.maps.MapTypeId.TERRAIN,
+										disableDefaultUI: true,
+										zoomControl: true,
                                         styles: [
                                         {
                                             featureType: 'water',
@@ -54,6 +56,53 @@
                                     startTime = (new Date()).getTime();
 
                                     createShaderProgram();
+									
+									var polyOptions = {
+										  strokeWeight: 0,
+										  fillOpacity: 0.7,
+										  editable: true
+										};
+										// Creates a drawing manager attached to the map that allows the user to draw
+										// markers, lines, and shapes.
+										drawingManager = new google.maps.drawing.DrawingManager({
+										  drawingMode: google.maps.drawing.OverlayType.POLYGON,
+										  markerOptions: {
+											draggable: true
+										  },
+										  polylineOptions: {
+											editable: true
+										  },
+										  rectangleOptions: polyOptions,
+										  circleOptions: polyOptions,
+										  polygonOptions: polyOptions,
+										  map: map
+										});
+
+										google.maps.event.addListener(drawingManager, 'overlaycomplete', function(e) {
+											if (e.type != google.maps.drawing.OverlayType.MARKER) {
+											// Switch back to non-drawing mode after drawing a shape.
+											drawingManager.setDrawingMode(null);
+
+											// Add an event listener that selects the newly-drawn shape when the user
+											// mouses down on it.
+											var newShape = e.overlay;
+											newShape.type = e.type;
+											google.maps.event.addListener(newShape, 'click', function() {
+											  setSelection(newShape);
+											});
+											setSelection(newShape);
+										 
+										 }
+										});
+
+										// Clear the current selection when the drawing mode is changed, or when the
+										// map is clicked.
+										google.maps.event.addListener(drawingManager, 'drawingmode_changed', clearSelection);
+										google.maps.event.addListener(map, 'click', clearSelection);
+										google.maps.event.addDomListener(document.getElementById('delete-button'), 'click', deleteSelectedShape);
+
+										buildColorPalette();
+									
                                 }
 
                                 function createShaderProgram()
@@ -328,6 +377,26 @@ In steps:
                                 var DRAW_HOLE_COUNTER = [];
                                 var num_of_holes = HolePoly.length;
                                 var animation_flag = 0;
+								
+								function start_moprhing()
+								{
+								initial_data(); //initializing data
+                                        updateData();
+                                        i++;
+                                        tick();
+								
+								
+								}
+								
+								function play_pause_moprhing()
+								{
+								
+								animation_flag++;
+								
+								}
+								
+								
+								
 
                                 function tick()
                                 {
@@ -349,6 +418,7 @@ In steps:
 										   // var start = new Date().getTime();
                                             converted_coord = loadData(RegionCoords1);
 											//var mid = new Date().getTime();
+											if(animation_flag%2==0)
                                             updateData();
 											//var end = new Date().getTime();
 											//var time1=mid-start;
@@ -489,10 +559,7 @@ In steps:
                                         });
 
                                         TargetPolygon.setMap(map);
-                                        initial_data(); //initializing data
-                                        updateData();
-                                        i++;
-                                        tick();
+                                        
                                     }
                                 }
 
