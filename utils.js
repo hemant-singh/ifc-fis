@@ -125,6 +125,46 @@ funtion isPointInPoly Adapted from: [http://www.ecse.rpi.edu/Homepages/wrf/Resea
                                     this.y = y;
                                     this.z = 1;
                                 }
+									
+								function isPolyClockwise(vert)
+								{
+								var i=0,sum=0,len=vert.length;
+								for(i=2;i<len;i=i+2)
+								{
+								sum=sum+(vert[i]-vert[i-2])*(vert[i+1]+vert[i-1]);
+														
+								}
+								
+								if(sum>=0)
+								return true;
+								else
+								return false;								
+								}
+								
+								//Polygon area using Shoelace formula
+								function polygonArea(vertices) { 
+								var area = 0;
+								for (var i = 0; i < vertices.length; i=i+2) {
+									j = (i + 2) % vertices.length;
+									area += vertices[i] * vertices[j+1];
+									area -= vertices[j]* vertices[i+1];
+								}
+								return area / 2;
+							}	
+									
+								
+								function reverseCoords(vert)
+								{
+								var i=0,sum=0,len=vert.length,newArr=[];
+								for(i=0,j=len-1;i<len;i=i+2,j=j-2)
+								{
+								newArr[i]=vert[j-1];
+								newArr[i+1]=vert[j];
+														
+								}
+								
+								return newArr;
+								}
 								
 								
 								 function resize()

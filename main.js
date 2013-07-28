@@ -404,19 +404,43 @@ In steps:
 								
 								for(i=0;i<d;i++)
 								{
-								console.log(object_poly_array[i]);
+								//console.log(object_poly_array[i]);
 								var x=convert_obeject_data(object_poly_array[i]);
-								console.log(x);
+								//console.log(x);
 								HolePoly[c+i]=x.slice(0);								
 								}
-								console.log(HolePoly);
+								//console.log(HolePoly);
 								
 								
+								}
+								
+								
+								function setOrderOfVertices()//This function makes anti clockwise vertices in clockwise order
+								{
+								var i=0,c=HolePoly.length;
+								
+								for(i=0;i<c;i++)
+								{
+								if(polygonArea(HolePoly[i])<0)
+								{
+								
+								var newArr=reverseCoords(HolePoly[i]);
+								HolePoly[i]=newArr.splice(0);
+								
+								}
+								}
+								
+								if(polygonArea(InitPoly)<0)
+								InitPoly=reverseCoords(InitPoly);
+								
+								if(!isPolyClockwise(TargetPoly))
+								TargetPoly=reverseCoords(InitPoly);
 								}
 								
 								function start_moprhing()
 								{
 								attach_objects();
+								setOrderOfVertices();
 								initial_data(); //initializing data
                                         updateData();
                                         i++;
