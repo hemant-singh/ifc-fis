@@ -15,6 +15,8 @@
 								var object_counter=0;
 								var object_ref_array=[];
 								var object_poly_array=[];
+								var deleted_object_array=[];
+								var deleted_object_counter=0;
 														
 								
 								
@@ -112,8 +114,11 @@
 										
 										google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
 										   {
+										   event.overlay.objectNumber=object_counter;
+										   event.overlay.shapeDeleted=false;
 										   object_ref_array[object_counter]=event.overlay;
 											object_poly_array[object_counter]=event.overlay.getPath().getArray();
+											object_poly_array[object_counter].shapeDeleted=false;
 											object_counter++;
 										  }
 										});
@@ -354,7 +359,7 @@ In steps:
 
                                     }
 
-                                  //  area_diff = ((PolyK.GetArea(arrayForArea)) / PolyK.GetArea(targetcoordsForArea) * 100);
+                                  //area_diff = ((polygonArea(arrayForArea)) / polygonArea(targetcoordsForArea) * 100);
                                    // console.log(area_diff);
                                     area_diff=99;
                                     RegionCoords1 = newCoords.splice(0);
@@ -400,27 +405,32 @@ In steps:
 								
 								function attach_objects()
 								{
-								var i=0,c=HolePoly.length,d=object_poly_array.length;
+								var i=0,c=HolePoly.length,d=object_poly_array.length,j1=0;
 								
-								for(i=0;i<d;i++)
-								{
-								//console.log(object_poly_array[i]);
-								var x=convert_obeject_data(object_poly_array[i]);
-								//console.log(x);
-								HolePoly[c+i]=x.slice(0);								
-								}
-								//console.log(HolePoly);
-								
-								
+									for(i=0,j1=0;i<d;i++)
+									{
+									console.log((object_poly_array[i].shapeDeleted));
+									if(!(object_poly_array[i].shapeDeleted))
+									{
+									
+									var x=convert_obeject_data(object_poly_array[i]);
+									
+									HolePoly[c+j1]=x.slice(0);
+									++j1;
+									
+									}															
+									}
+										
 								}
 								
 								
 								function setOrderOfVertices()//This function makes anti clockwise vertices in clockwise order
 								{
 								var i=0,c=HolePoly.length;
-								
+								console.log(c);	
 								for(i=0;i<c;i++)
 								{
+								
 								if(polygonArea(HolePoly[i])<0)
 								{
 								
@@ -439,6 +449,7 @@ In steps:
 								
 								function start_moprhing()
 								{
+								console.log(deleted_object_array);
 								attach_objects();
 								setOrderOfVertices();
 								initial_data(); //initializing data
