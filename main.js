@@ -7,7 +7,8 @@
                                 var RegionCoords0 = [];
                                 var RegionCoords1 = [];
                                 var TargetCoords1 = [];
-                                var HoleCoords1 = [];                             
+                                var HoleCoords1 = []; 
+								var TextureCoords=[];		
 
                                 var pixelsToWebGLMatrix = new Float32Array(16);
                                 var mapMatrix = new Float32Array(16);
@@ -17,11 +18,23 @@
 								var object_poly_array=[];
 								var deleted_object_array=[];
 								var deleted_object_counter=0;
+								var MinX,MaxX,MinY,MaxY; //Used for texture mapping
 														
 								
+								var image = new Image();
+								
+								function loadImage(texData) {
+									image.src = "water.jpg";							
+								 // MUST BE SAME DOMAIN!!!
+								image.onload = function() {
+								loadTexture(texData,image);
+									}
+								}
 								
 								  function init()
                                 {
+								
+								
                                     // initialize the map
                                     var mapOptions = {
                                         zoom: 9,
@@ -62,6 +75,7 @@
                                     startTime = (new Date()).getTime();
 
                                     createShaderProgram();
+									console.log("here");
 									
 									var polyOptions = {
 										  
@@ -129,24 +143,50 @@
 
                                 function createShaderProgram()
                                 {
-                                    // create vertex shader
+								
+                               // create vertex shader
                                     var vertexSrc = document.getElementById('pointVertexShader').text;
                                     var vertexShader = gl.createShader(gl.VERTEX_SHADER);
                                     gl.shaderSource(vertexShader, vertexSrc);
                                     gl.compileShader(vertexShader);
+									console.log("hello1");
+									var success = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
+									  if (!success) {
+										// Something went wrong during compilation; get the error
+										throw "could not compile vertex shader:" + gl.getShaderInfoLog(vertexShader);
+									  }
 
                                     // create fragment shader
                                     var fragmentSrc = document.getElementById('pointFragmentShader').text;
                                     var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
                                     gl.shaderSource(fragmentShader, fragmentSrc);
                                     gl.compileShader(fragmentShader);
+									console.log("hello2");
+									
+									  var success = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
+									  if (!success) {
+										// Something went wrong during compilation; get the error
+										throw "could not compile fragment shader:" + gl.getShaderInfoLog(fragmentShader);
+									  }
+									
 
                                     // link shaders to create our program
                                     pointProgram = gl.createProgram();
+									console.log("hello3");
                                     gl.attachShader(pointProgram, vertexShader);
+									console.log("hello4");
                                     gl.attachShader(pointProgram, fragmentShader);
-                                    gl.linkProgram(pointProgram);
-                                    gl.useProgram(pointProgram);
+									console.log("hello5");
+                                    gl.linkProgram(pointProgram);								
+									console.log("hello3");
+									 var success = gl.getProgramParameter(pointProgram, gl.LINK_STATUS);
+									  if (!success) {
+										  // something went wrong with the link
+										  throw ("program filed to link:" + gl.getProgramInfoLog (pointProgram));
+									  }
+									
+									gl.useProgram(pointProgram);
+									
                                 }
 
                                 // linear interpolate between a and b
@@ -179,10 +219,42 @@
                                     var time = (new Date()).getTime();
                                     gl.uniform1f(pointProgram.pTimeUniform, (time - startTime) / 1000.0);
                                 }
+								
+								
+								
+								
+								
+								
+								function loadTexture(texData,image)
+								{
+								
+								 var texCoordLocation = gl.getAttribLocation(pointProgram, "a_texCoord");
+								  var texCoordBuffer = gl.createBuffer();
+								  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+								  gl.bufferData(gl.ARRAY_BUFFER,texData, gl.STATIC_DRAW);
+								  gl.enableVertexAttribArray(texCoordLocation);
+								  gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+									
+								 var texture = gl.createTexture();
+								gl.bindTexture(gl.TEXTURE_2D, texture);
+
+								  // Set the parameters so we can render any size image.
+								  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+								  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+								  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+								  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+								  // Upload the image into the texture.
+								  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);			
+								
+								
+								}
                                
 
                                 var centroid1;
-
+								
+								
+								
                                 function initial_data()
                                 {
 								drawingManager.setOptions({
@@ -508,15 +580,25 @@ In steps:
                                             DRAW_HOLE_COUNTER[i] = converted_coord_hole.length / 3;
                                             converted_coord_hole_array = combineArray(converted_coord_hole_array, converted_coord_hole);
                                         }
+										
+										var TexCoords=textureMap(converted_coord);
+										loadImage(TexCoords);
+										
                                         //converted_coord_hole1[2]=0;
                                         var newArray = combineArray(converted_coord, converted_coord_hole_array);
                                         //var newArray = combineArray(converted_coord, converted_coord_hole1);
                                         POINT_COUNT = (newArray.length) / 3;
                                         DRAW_COUNT = (converted_coord.length) / 3;
 										//var start = new Date().getTime();
+										
+										
+										
+										
+										
                                         load_in_gl(newArray, 'worldCoord');
 										//var mid = new Date().getTime();
-                                        if (debug_counter++ < 1) console.log(POINT_COUNT + "   " + DRAW_COUNT + " " + newArray.length);
+                                        if (debug_counter++ < 1) 
+										console.log(TexCoords);
 
                                         drawScene();
 										/*var end = new Date().getTime();
@@ -632,6 +714,15 @@ In steps:
                                         });
 
                                         TargetPolygon.setMap(map);
+										
+										
+										 var TargetCoords = target_data(2);
+										 var minMax=minMaxXY(TargetCoords);
+										 MinX=minMax[0];
+										 MinY=minMax[1];
+										 MaxX=minMax[2];									 	
+										 MaxY=minMax[3];	
+										
                                         
                                     }
                                 }
