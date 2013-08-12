@@ -65,7 +65,7 @@ precision highp float;
  void main() 
  {
  if(vPosition.z==0.0)
- gl_FragColor=texture2D(uimage,vtexCoord);
+ gl_FragColor=texture2D(uimage,vPosition.xy);
  }
 </script>
  </head>

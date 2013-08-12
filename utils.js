@@ -93,16 +93,20 @@
 								for(c1=0,d1=0;c1<coords.length;c1=c1+3,d1=d1+2)
 								{
 								
+								/*x=(coords[c1]%1);
+								y=([c1+1])%1;	
+								*/
+								
 								x=(MaxX-coords[c1])/width;
 								y=(MaxY-coords[c1+1])/height;	
 								if(x<0 || x>1 || y<0 || y>1)
 								;//console.log("False");
 								//console.log(coords[c1+1]);
 								if(ccc==10)
-								console.log(y+"  "+MaxY+"   "+coords[c1+1]+"   "+height+"    "+x+"  "+coords[c1]+"  "+width);
+								console.log(2.3 % 1);
 							
-								TexData[d1]=x;
-								TexData[d1+1]=y;
+								TexData[d1]=x/1000000;
+								TexData[d1+1]=y/10000;
 								
 								
 								}
