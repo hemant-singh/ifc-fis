@@ -1,4 +1,4 @@
-  function target_data(x)
+								function target_data(x)
                                 {
                                     var mapProjection = map.getProjection();
 
@@ -22,6 +22,9 @@
                                     else if (x == 3) return Coords3;
 
                                 }
+								
+								
+								
                                 function hole_data(x, hole_number)
                                 {
                                     var mapProjection = map.getProjection();
@@ -46,16 +49,70 @@
 								function convert_obeject_data(data)//This function extracts lat lng from drawn objects
                                 {
 								var Coords1 = [];
-                                        
+                                        console.log(data);
                                     for (i = 0,j=0; i < data.length; i++,j=j+2)
                                     {
-                                        Coords1[j]=data[i].jb;
-                                        Coords1[j+1]=data[i].kb;
+                                        Coords1[j]=data[i].lb;
+                                        Coords1[j+1]=data[i].mb;
                                     }
 									return Coords1;
                                     
                                 }
-
+								
+								
+								function minMaxXY(coords)//Coords should be in Coords.x and Coords.Y format
+								{
+								var c1=0,lMinX=lMaxX=coords[0].x,lMinY=lMaxY=coords[0].y;
+								var arr=[lMinX,lMinY,lMaxX,lMaxY];
+								console.log("hell"+arr);
+								for(c1=1;c1<coords.length;c1++)
+								{
+								if(coords[c1].x>lMaxX)
+								lMaxX=coords[c1].x;
+								if(coords[c1].x<lMinX)
+								lMinX=coords[c1].x;
+								if(coords[c1].y>lMaxY)
+								lMaxY=coords[c1].y;
+								if(coords[c1].x<lMinY)
+								lMinY=coords[c1].y;
+								}
+								arr=[lMinX,lMinY,lMaxX,lMaxY];
+								console.log("hell"+arr);
+								return arr;
+								}
+								
+								var ccc=0;
+								function textureMap(coords)//Generates texture coordinates
+								{
+								var c1=0,d1=0,x,y;
+								var width=MaxX-MinX;
+								var height=MaxY-MinY;
+								
+								var TexData = new Float32Array(coords.lenght);
+								 
+								for(c1=0,d1=0;c1<coords.length;c1=c1+3,d1=d1+2)
+								{
+								
+								x=(MaxX-coords[c1])/width;
+								y=(MaxY-coords[c1+1])/height;	
+								if(x<0 || x>1 || y<0 || y>1)
+								;//console.log("False");
+								//console.log(coords[c1+1]);
+								if(ccc==10)
+								console.log(y+"  "+MaxY+"   "+coords[c1+1]+"   "+height+"    "+x+"  "+coords[c1]+"  "+width);
+							
+								TexData[d1]=x;
+								TexData[d1+1]=y;
+								
+								
+								}
+								
+								
+								ccc++;
+								
+								return TexData;
+								}
+								
 /*
 funtion isPointInPoly Adapted from: [http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html] 
 */
