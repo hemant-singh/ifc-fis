@@ -19,12 +19,12 @@
 								var deleted_object_array=[];
 								var deleted_object_counter=0;
 								var MinX,MaxX,MinY,MaxY; //Used for texture mapping
-														
+								var canvas;						
 								
 								var image = new Image();
 								
 								function loadImage(texData) {
-									image.src = "water.jpg";							
+									image.src = "water2.png";							
 								 // MUST BE SAME DOMAIN!!!
 								image.onload = function() {
 								loadTexture(texData,image);
@@ -58,6 +58,7 @@
                                         }]
                                     };
                                     var mapDiv = document.getElementById('map-div');
+									canvas=mapDiv;
                                     map = new google.maps.Map(mapDiv, mapOptions);
 
                                     // initialize the canvasLayer
@@ -206,6 +207,7 @@
 										attributeLoc = gl.getAttribLocation(pointProgram, attribname);
 										gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
 										pointProgram.pTimeUniform = gl.getUniformLocation(pointProgram, "time");
+										pointProgram.pResolutionUniform = gl.getUniformLocation(pointProgram, "resolution");
 									}
                                     
                                     gl.bufferData(gl.ARRAY_BUFFER, rawData2, gl.STATIC_DRAW);
@@ -218,6 +220,7 @@
                                     
                                     var time = (new Date()).getTime();
                                     gl.uniform1f(pointProgram.pTimeUniform, (time - startTime) / 1000.0);
+									gl.uniform2f(pointProgram.pResolutionUniform, canvas.width, canvas.height);
                                 }
 								
 								
@@ -616,7 +619,7 @@ In steps:
                                 function drawScene()
                                 {
                                     gl.clear(gl.COLOR_BUFFER_BIT);
-                                    gl.clear(gl.DEPTH_BUFFER_BIT);
+                                   
 
                                     var mapProjection = map.getProjection();
 

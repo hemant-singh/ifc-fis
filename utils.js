@@ -103,7 +103,7 @@
 								;//console.log("False");
 								//console.log(coords[c1+1]);
 								if(ccc==10)
-								console.log(2.3 % 1);
+								//console.log(2.3 % 1);
 							
 								TexData[d1]=x/1000000;
 								TexData[d1+1]=y/10000;
