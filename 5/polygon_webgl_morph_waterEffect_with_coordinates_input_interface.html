@@ -1,0 +1,1095 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta
+  charset="utf-8">
+    <title>
+      IFC
+      :
+      Demo
+      Polygon
+      Morph
+    </title>
+    <style>
+      html, body, #map-div {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+    </style>
+
+    <script
+    src="http://maps.googleapis.com/maps/api/js?sensor=false">
+      </script>
+      <script
+      src="CanvasLayer.js">
+        </script>
+        <script
+        type="text/javascript"
+        src="webgl-utils.js">
+          </script>
+          <script
+          type="text/javascript"
+          src="glMatrix-0.9.5.min.js">
+            </script>
+            <script
+            type="text/javascript"
+            src="polyk.js">
+              </script>
+
+              <script>
+                var map;
+                var canvasLayer;
+                var gl;
+
+                var pointProgram;
+                var pointArrayBuffer, squareVertexPositionBuffer;
+                var POINT_COUNT = 21;
+
+                var MIN_X = 40;
+                var MAX_X = 80;
+                var MIN_Y = 88;
+                var MAX_Y = 109;
+                var RegionCoords0 = [];
+                var RegionCoords1 = [];
+                var TargetCoords1 = [];
+                var HoleCoords1 = [];
+
+                var InitPoly = [
+
+                  24.872421,87.911568,
+24.874601,87.949677,
+24.860273,87.9562,
+24.814472,87.93869,
+24.786423,87.951736,
+24.749014,87.953796,
+24.718455,87.951736,
+24.705356,87.954483,
+24.67229,87.988815,
+24.65669,88.017998,
+24.647641,88.074646,
+24.652634,88.128204,
+24.647641,88.144684,
+24.612063,88.17421,
+24.600826,88.178329,
+24.587715,88.180389,
+24.544625,88.179016,
+24.512766,88.17009,
+24.490898,88.163223,
+24.467776,88.172836,
+24.45465,88.181076,
+24.447775,88.195496,
+24.453713,88.198242,
+24.456838,88.203735,
+24.457151,88.210602,
+24.468713,88.223305,
+24.450275,88.221931,
+24.442149,88.196869,
+24.443399,88.181763,
+24.450588,88.1567,
+24.4559,88.138504,
+24.459026,88.129234,
+24.465276,88.117561,
+24.47215,88.105888,
+24.490273,88.091125,
+24.510892,88.083572,
+24.523074,88.078423,
+24.545874,88.078766,
+24.554618,88.080139,
+24.570855,88.070526,
+24.603636,88.043747,
+24.621739,88.030357,
+24.634847,88.027611,
+24.651698,87.981262,
+24.670106,87.965126,
+24.713153,87.93766,
+24.759614,87.929077,
+24.809174,87.919121,
+24.82756,87.910881,
+24.836907,87.903328,
+24.851238,87.897148,
+24.867437,87.905045
+
+
+
+                ];
+
+                var TargetPoly = [
+
+                  24.859026, 87.824707,
+                  24.881453, 87.966156,
+                  24.836596, 88.044434,
+                  24.877716, 88.100739,
+                  24.944974, 88.106232,
+                  24.935012, 88.17627,
+                  24.882699, 88.238068,
+                  24.787981, 88.261414,
+                  24.759302, 88.26828,
+                  24.749326, 88.229828,
+                  24.763044, 88.174896,
+                  24.797955, 88.133698,
+                  24.805435, 88.092499,
+                  24.720638, 88.085632,
+                  24.705668, 88.177643,
+                  24.675722, 88.231201,
+                  24.567108, 88.2724,
+                  24.494647, 88.265533,
+                  24.467151, 88.249054,
+                  24.37587, 88.17215,
+                  24.434647, 87.897491,
+                  24.558365, 87.879639,
+                  24.701925, 87.795868,
+                  24.854042, 87.824707,
+                  24.859026, 87.824707
+
+
+
+                ];
+
+
+                var HolePoly = [];
+                HolePoly[0] = [
+                  24.595831, 88.026581,
+                  24.605821, 88.0513,
+                  24.579597, 88.073273,
+                  24.559614, 88.0513,
+                  24.558365, 88.005981,
+                  24.584593, 88.003235,
+                  24.595831, 88.026581,
+
+                ];
+
+                HolePoly[1] = [
+
+
+
+
+                  24.500895, 88.150177,
+                  24.502145, 88.173523,
+                  24.47965, 88.17627,
+                  24.47965, 88.157043,
+                  24.485899, 88.144684,
+                  24.500895, 88.150177,
+
+                ];
+
+
+
+
+                var pixelsToWebGLMatrix = new Float32Array(16);
+                var mapMatrix = new Float32Array(16);
+				var startTime;
+
+                
+
+                function createShaderProgram() {
+                  // create vertex shader
+                  var vertexSrc = document.getElementById('pointVertexShader').text;
+                  var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+                  gl.shaderSource(vertexShader, vertexSrc);
+                  gl.compileShader(vertexShader);
+
+                  // create fragment shader
+                  var fragmentSrc = document.getElementById('pointFragmentShader').text;
+                  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+                  gl.shaderSource(fragmentShader, fragmentSrc);
+                  gl.compileShader(fragmentShader);
+
+                  // link shaders to create our program
+                  pointProgram = gl.createProgram();
+                  gl.attachShader(pointProgram, vertexShader);
+                  gl.attachShader(pointProgram, fragmentShader);
+                  gl.linkProgram(pointProgram);
+                  gl.useProgram(pointProgram);
+                }
+
+                 // linear interpolate between a and b
+
+                function lerp(a, b, t) {
+                  return a + t * (b - a);
+                }
+				
+				var bufferCounter=0;
+                function load_in_gl(rawData2, attribname) {
+
+                  // create webgl buffer, bind it, and load rawData into it
+				  if(bufferCounter==0)
+				  {
+                  pointArrayBuffer = gl.createBuffer();
+                  bufferCounter++;
+				  }
+				  gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
+                  gl.bufferData(gl.ARRAY_BUFFER, rawData2, gl.STATIC_DRAW);
+                  // enable the 'worldCoord' attribute in the shader to receive buffer
+                  var attributeLoc = gl.getAttribLocation(pointProgram, attribname);
+                  gl.enableVertexAttribArray(attributeLoc);
+                  // tell webgl how buffer is laid out (pairs of x,y coords)
+                  gl.vertexAttribPointer(attributeLoc, 3, gl.FLOAT, false, 0, 0);
+				  
+				  pointProgram.pTimeUniform = gl.getUniformLocation(pointProgram, "time");
+				  var time = (new Date()).getTime();
+				  gl.uniform1f(pointProgram.pTimeUniform, (time - startTime) / 1000.0);
+                }
+
+
+                function computePolygonCentroid(vertices, vertexCount) {
+                  var centroid = [0, 0];
+                  var signedArea = 0.0;
+                  var x0 = 0.0;
+                  // Current vertex X
+                  var y0 = 0.0;
+                  // Current vertex Y
+                  var x1 = 0.0;
+                  // Next vertex X
+                  var y1 = 0.0;
+                  // Next vertex Y
+                  var a = 0.0;
+                  // Partial signed area
+
+                  // For all vertices except last
+                  var i = 0;
+                  for (i = 0; i < vertexCount - 1; ++i) {
+                    x0 = vertices[i].x;
+                    y0 = vertices[i].y;
+                    x1 = vertices[i + 1].x;
+                    y1 = vertices[i + 1].y;
+                    a = x0 * y1 - x1 * y0;
+                    signedArea += a;
+                    centroid[0] += (x0 + x1) * a;
+                    centroid[1] += (y0 + y1) * a;
+                  }
+
+                  // Do last vertex
+                  x0 = vertices[i].x;
+                  y0 = vertices[i].y;
+                  x1 = vertices[0].x;
+                  y1 = vertices[0].y;
+                  a = x0 * y1 - x1 * y0;
+                  signedArea += a;
+                  centroid[0] += (x0 + x1) * a;
+                  centroid[1] += (y0 + y1) * a;
+
+                  signedArea *= 0.5;
+                  centroid[0] /= (6.0 * signedArea);
+                  centroid[1] /= (6.0 * signedArea);
+
+                  return centroid;
+                }
+
+
+
+                function Coords(x, y) //function to create coordinate object
+                 {
+                  this.x = x;
+                  this.y = y;
+                  this.z = 0;
+                }
+
+                function holeCoords(x, y) //function to create coordinate object
+                 {
+                  this.x = x;
+                  this.y = y;
+                  this.z = 1;
+                }
+
+                var centroid1;
+
+                function initial_data() {
+                  var mapProjection = map.getProjection();
+                  RegionCoords1 = initialPoly_data(2);
+                  /*Now we will increase the number of points to somewhere 10 times of current coordinates so that to smooothen the morphing.
+The points are increased by calculating and adding midpoints of the given coordinates of the polygon		
+*/
+                  var RegionCoords3 = RegionCoords1.slice(0);
+                  var i, j, k;
+                  var RegionCoords2 = [];
+                  for (i = 0; i < 3; i++) {
+                    for (j = 0, k = 0; j < (RegionCoords3.length - 1); j++, k + 2) {
+                      var oldCoord = new Coords(RegionCoords3[j].x, RegionCoords3[j].y);
+                      RegionCoords2.push(oldCoord);
+                      var newCoord = new Coords((RegionCoords3[j].x + RegionCoords3[j + 1].x) / 2, (RegionCoords3[j].y + RegionCoords3[j + 1].y) / 2);
+                      RegionCoords2.push(newCoord);
+                    }
+
+                    RegionCoords3 = RegionCoords2.slice(0);
+                    RegionCoords2.length = 0;
+                  }
+                  RegionCoords1 = RegionCoords3.slice(0);
+
+                  return RegionCoords1;
+                }
+
+
+
+                function initialPoly_data(x) {
+                  var mapProjection = map.getProjection();
+                  var Coords1 = [],
+                    Coords2 = [];
+                  for (i = 0; i < InitPoly.length; i = i + 2) {
+                    var LatLngObject = new google.maps.LatLng(InitPoly[i], InitPoly[i + 1]);
+                    Coords1.push(LatLngObject);
+                    var XYObject = map.getProjection().fromLatLngToPoint(LatLngObject);
+                    Coords2.push(XYObject);
+                  }
+
+                  if (x == 1)
+                    return Coords1;
+                  else return Coords2;
+                }
+
+
+                 //This function returns target polygon data and value of x determines that wether the returned data should be in lat lng form or mercartor projections
+
+                function target_data(x) {
+                  var mapProjection = map.getProjection();
+
+                  var Coords1 = [],
+                    Coords2 = [], Coords3=[];
+                  for (i = 0; i < TargetPoly.length; i = i + 2) {
+                    var LatLngObject = new google.maps.LatLng(TargetPoly[i], TargetPoly[i + 1]);
+                    Coords1.push(LatLngObject);
+                    var XYObject = map.getProjection().fromLatLngToPoint(LatLngObject);
+					XYObject.z=0;
+                    Coords2.push(XYObject);
+					Coords3[i]=XYObject.x;
+					Coords3[i+1]=XYObject.y;
+					
+                  }
+
+                  if (x == 1)
+                    return Coords1;
+                  else 
+				  if (x==2)
+				  return Coords2;
+				  else if(x==3)
+				   return Coords3;
+
+                }
+
+
+                function hole_data(x, hole_number) {
+                  var mapProjection = map.getProjection();
+
+                  var Coords1 = [],
+                    Coords2 = [];
+                  for (i = 0; i < HolePoly[hole_number].length; i = i + 2) {
+                    var LatLngObject = new google.maps.LatLng(HolePoly[hole_number][i], HolePoly[hole_number][i + 1]);
+                    Coords1.push(LatLngObject);
+                    var XYObject = map.getProjection().fromLatLngToPoint(LatLngObject);
+                    XYObject.z = 1;
+                    Coords2.push(XYObject);
+                  }
+
+                  if (x == 1)
+                    return Coords1;
+                  else return Coords2;
+                }
+
+
+
+
+                /*
+funtion isPointInPoly Adapted from: [http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html] 
+*/
+
+                function isPointInPoly(pt, poly) {
+                  for (var c = false, i = -1, l = poly.length, j = l - 1; ++i < l; j = i)
+                    ((poly[i].y <= pt.y && pt.y < poly[j].y) || (poly[j].y <= pt.y && pt.y < poly[i].y)) && (pt.x < (poly[j].x - poly[i].x) * (pt.y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x) && (c = !c);
+                  return c;
+                }
+
+
+
+                 //Function loaddata converts data from object form to simple array of vertices and then calculates the triangulation	
+                var debug_counter = 0;
+
+                function loadData(CoordArray) {
+
+                  var num_coods = CoordArray.length;
+                  var j = 0;
+                  var rawData2 = new Float32Array(2 * num_coods + 2);
+
+                  for (var i = 0, j = 0; j < CoordArray.length; i += 2, j += 1) {
+                    rawData2[i] = CoordArray[j].x;
+                    rawData2[i + 1] = CoordArray[j].y;
+                  }
+
+                  var triangulated_indices = PolyK.Triangulate(rawData2);
+                  var triangulatedData = new Float32Array(3 * (triangulated_indices.length - 1));
+                  POINT_COUNT = triangulated_indices.length - 1;
+                  for (var i = 0, j = 0; j < triangulated_indices.length - 1; i += 3, j += 1) {
+                    triangulatedData[i] = CoordArray[triangulated_indices[j]].x;
+                    triangulatedData[i + 1] = CoordArray[triangulated_indices[j]].y;
+                    triangulatedData[i + 2] = CoordArray[triangulated_indices[j]].z;
+
+
+                  }
+                  return triangulatedData;
+                }
+
+
+
+                function resize() {
+                  var width = canvasLayer.canvas.width;
+                  var height = canvasLayer.canvas.height;
+
+                  gl.viewport(0, 0, width, height);
+
+                  // matrix which maps pixel coordinates to WebGL coordinates
+                  pixelsToWebGLMatrix.set([2 / width, 0, 0, 0, 0, -2 / height, 0, 0,
+                    0, 0, 0, 0, -1, 1, 0, 1
+                  ]);
+                }
+
+
+                function scaleMatrix(matrix, scaleX, scaleY) {
+                  // scaling x and y, which is just scaling first two columns of matrix
+                  matrix[0] *= scaleX;
+                  matrix[1] *= scaleX;
+                  matrix[2] *= scaleX;
+                  matrix[3] *= scaleX;
+
+                  matrix[4] *= scaleY;
+                  matrix[5] *= scaleY;
+                  matrix[6] *= scaleY;
+                  matrix[7] *= scaleY;
+                }
+
+                function translateMatrix(matrix, tx, ty) {
+                  // translation is in last column of matrix
+                  matrix[12] += matrix[0] * tx + matrix[4] * ty;
+                  matrix[13] += matrix[1] * tx + matrix[5] * ty;
+                  matrix[14] += matrix[2] * tx + matrix[6] * ty;
+                  matrix[15] += matrix[3] * tx + matrix[7] * ty;
+                }
+
+
+
+                /*
+This function brings changes to geometry of the polygon which are responsible for the morphing effect.
+For morphing the code is calculating a point on the perpendicular bisector of the line joining two consecutive
+verices. The point lies at distance "step" from the edge of the old polygon.
+
+In steps:	
+1. First the code calculate the midpoint of two consecutive vertice
+2. Then it calculates slope of normal to the line joining two consecutive vertices
+3. The using this slope, midpoint and equation of line, a point at distace "Step" away is calculated
+4. Using these new points we form the new polygon
+*/
+
+                var testangle = 1;
+				var area_diff=0;//this variabvle stores the amount of area covered by morphing polygon in percentage and is used to stop animation
+				
+
+                function updateData() {
+
+
+                  var targetcoords = target_data(2);
+
+                  var holecoords = hole_data(2, 0);
+                  var holecoords1 = hole_data(2, 1);
+				  var targetcoordsForArea = target_data(3);
+                  var centroid = computePolygonCentroid(RegionCoords1, RegionCoords1.length);
+				  
+
+                  var step = 0.0005;
+                  //This 
+
+                  var newCoords = [];
+					var counter=0;
+					var arrayForArea=[]//This array is used for calculating area in the end
+					//var i1=0;//this counter is used for area array increment
+                  for (i = 0; i < RegionCoords1.length; i++) {
+				  
+				  
+                    var y, x, m, slope, x1, x2, y1, y2, c, j = 0;
+
+                    if (i == RegionCoords1.length - 1)
+                      j = 0;
+                    else
+                      j = i + 1;
+
+                    y = (RegionCoords1[i].y + RegionCoords1[j].y) / 2;
+                    x = (RegionCoords1[i].x + RegionCoords1[j].x) / 2;
+
+                    if ((RegionCoords1[i].x - RegionCoords1[j].x) != 0) {
+                      slope = (RegionCoords1[i].y - RegionCoords1[j].y) / (RegionCoords1[i].x - RegionCoords1[j].x);
+                    } else {
+                      slope = 0;
+                    }
+                    m = -1 / slope;
+                    //slope of normal
+
+                    x1 = x + step * Math.cos(Math.atan(m));
+                    //Two x are calculated because there will be two points at distance step, one inside the current polygon and one outside.
+                    x2 = x - step * Math.cos(Math.atan(m));
+                    c = y - m * x;
+                    y1 = m * x1 + c;
+                    y2 = m * x2 + c;
+
+
+
+                    var newCoord1 = new Coords(x1, y1);
+                    var newCoord2 = new Coords(x2, y2);
+                    var newPoint;
+
+                    if (isPointInPoly(newCoord1, RegionCoords1) && isPointInPoly(newCoord2, RegionCoords1)) //This avoide formation of complex polygons
+                    {
+                      //console.log("fass gaye :D");
+
+                      continue;
+                    }
+
+
+
+                    if (isPointInPoly(newCoord1, RegionCoords1)) //We take the point which is outside the current polygon
+                    {
+                      newCoord1.x = newCoord2.x;
+                      newCoord1.y = newCoord2.y;
+                    }
+
+                    if (isPointInPoly(newCoord1, targetcoords)) //Is new point inside the target polygon, if yes we add it
+                    {
+                      newCoords.push(newCoord1);
+					  arrayForArea[2*i]=newCoord1.x;
+					  arrayForArea[2*i+1]=newCoord1.y;
+					  
+                    } else {
+						
+					//var NearestCoordOnEdge=PolyK.ClosestEdge (targetcoordsForArea,RegionCoords1[i].x,RegionCoords1[i].y);	
+					 //newCoords.push(NearestCoordOnEdge.point);	
+						
+						counter++;
+                      RegionCoords1[i].over = true;
+					  arrayForArea[2*i]= RegionCoords1[i].x;
+					  arrayForArea[2*i+1]= RegionCoords1[i].y;
+                      newCoords.push(RegionCoords1[i]);
+                    }
+
+                  }
+					
+                 area_diff=((PolyK.GetArea(arrayForArea))/PolyK.GetArea(targetcoordsForArea)*100);
+                  //area_diff=99;
+                  RegionCoords1 = newCoords.splice(0);
+				  
+				  
+					var delete_distance = 0.001;
+					var add_distance = 0.002;
+					
+					
+
+                  for (i = 0; i < RegionCoords1.length; i++) {
+
+                    if (i == RegionCoords1.length - 1)
+                      j = 0;
+                    else
+                      j = i + 1;
+
+                    
+                    if (Math.sqrt(Math.pow(RegionCoords1[i].y - RegionCoords1[j].y, 2) + Math.pow(RegionCoords1[i].x - RegionCoords1[j].x, 2)) < delete_distance) {
+                      RegionCoords1.splice(i, 1);
+                      continue;
+                    }
+
+                    //If two consecutive points are too far away in the polygon, we add a point to smoothen the morphing
+                    
+                    if (Math.sqrt(Math.pow(RegionCoords1[i].y - RegionCoords1[j].y, 2) + Math.pow(RegionCoords1[i].x - RegionCoords1[j].x, 2)) > add_distance) {
+                      y = (RegionCoords1[i].y + RegionCoords1[j].y) / 2;
+                      x = (RegionCoords1[i].x + RegionCoords1[j].x) / 2;
+                      var newCoord1 = new Coords(x, y);
+                      RegionCoords1.splice(j, 0, newCoord1);
+                      i++;
+                    }
+
+
+                  }
+
+
+                }
+
+                function combineArray(arr1, arr2) {
+
+                  var c = new Float32Array(arr1.length + arr2.length);
+                  for (i = 0; i < arr1.length; i++) {
+                    c[i] = arr1[i];
+                  }
+                  for (i = arr1.length, j = 0; j < arr2.length; i++, j++) {
+                    c[i] = arr2[j];
+
+                  }
+                  return c;
+
+                }
+
+               
+
+
+
+                var debug_counter = 0;
+                var DRAW_COUNT = 0;
+				var DRAW_HOLE_COUNTER=[];
+				var num_of_holes= HolePoly.length;
+				var animation_flag=0;
+                function tick() {
+					{
+                  requestAnimFrame(tick);
+                                   
+                var converted_coord=[];
+				if(1)
+				{
+				//console.log(area_diff);
+				converted_coord = loadData(RegionCoords1);
+				updateData(); 
+                 }
+				 else
+				 {
+				 
+				 var targetcoords = target_data(2);
+				converted_coord = loadData(targetcoords);
+				animation_flag=1;
+				
+				 }
+				 
+				 var i=0;
+				 var converted_coord_hole_array=[];
+				 for(i=0;i<num_of_holes;i++)
+				 {				 
+				 var holecoords = hole_data(2, i);				  
+				 var converted_coord_hole = loadData(holecoords);
+				 DRAW_HOLE_COUNTER[i]=converted_coord_hole.length/3;
+                 converted_coord_hole_array = combineArray(converted_coord_hole_array,converted_coord_hole);
+				}
+				 //converted_coord_hole1[2]=0;
+                                    
+				  var newArray = combineArray(converted_coord, converted_coord_hole_array);
+				  //var newArray = combineArray(converted_coord, converted_coord_hole1);
+                  POINT_COUNT = (newArray.length) / 3;
+				  DRAW_COUNT = (converted_coord.length) / 3;
+                  load_in_gl(newArray, 'worldCoord');
+				  if(debug_counter++<1)
+				  console.log(POINT_COUNT+"   "+DRAW_COUNT+" "+newArray.length);
+				  
+                  drawScene();
+                }
+
+				}
+
+                var i = 0;
+				
+				function init() {
+                  // initialize the map
+                  var mapOptions = {
+                    zoom: 11,
+                    center: new google.maps.LatLng(24.663824, 88.015782),
+                    mapTypeId: google.maps.MapTypeId.TERRAIN,
+                    styles: [{
+                      featureType: 'water',
+                      stylers: [{
+                        color: '#c3cfdd'
+                      }]
+                    }, {
+                      featureType: 'poi',
+                      stylers: [{
+                        visibility: 'off'
+                      }]
+                    }]
+                  };
+                  var mapDiv = document.getElementById('map-div');
+                  map = new google.maps.Map(mapDiv, mapOptions);
+
+                  // initialize the canvasLayer
+                  var canvasLayerOptions = {
+                    map: map,
+                    resizeHandler: resize,
+                    animate: false,
+                    updateHandler: update
+                  };
+                  canvasLayer = new CanvasLayer(canvasLayerOptions);
+
+                  // initialize WebGL
+                  gl = canvasLayer.canvas.getContext('experimental-webgl');
+
+				  startTime = (new Date()).getTime();
+				  
+                  createShaderProgram();
+				  
+				  
+				   
+                  
+				  
+
+                }
+				
+
+                function drawScene() {
+
+
+                  gl.clear(gl.COLOR_BUFFER_BIT);
+				  gl.clear(gl.DEPTH_BUFFER_BIT);
+
+                  var mapProjection = map.getProjection();
+
+                  /**
+                   * We need to create a transformation that takes world coordinate
+                   * points in the pointArrayBuffer to the coodinates WebGL expects.
+                   * 1. Start with second half in pixelsToWebGLMatrix, which takes pixel
+                   *     coordinates to WebGL coordinates.
+                   * 2. Scale and translate to take world coordinates to pixel coords
+                   * see https://developers.google.com/maps/documentation/javascript/maptypes#MapCoordinate
+                   */
+
+                  // copy pixel->webgl matrix
+                  mapMatrix.set(pixelsToWebGLMatrix);
+
+                  // Scale to current zoom (worldCoords * 2^zoom)
+                  var scale = Math.pow(2, map.zoom);
+                  scaleMatrix(mapMatrix, scale, scale);
+
+                  // translate to current view (vector from topLeft to 0,0)
+                  var offset = mapProjection.fromLatLngToPoint(canvasLayer.getTopLeft());
+                  translateMatrix(mapMatrix, -offset.x, -offset.y);
+
+                  // attach matrix value to 'mapMatrix' uniform in shader
+                  var matrixLoc = gl.getUniformLocation(pointProgram, 'mapMatrix');
+                  gl.uniformMatrix4fv(matrixLoc, false, mapMatrix);
+
+                  // draw!
+                  //  gl.drawArrays(gl.POINTS, 0, POINT_COUNT);
+                  gl.drawArrays(gl.TRIANGLES, 0, DRAW_COUNT);
+				  //Drawing holes
+				  var k=0;
+				  var counter=DRAW_COUNT;
+				  
+				  for(k=0;k<num_of_holes;k++)
+				 {		
+				  gl.drawArrays(gl.TRIANGLES, counter, DRAW_HOLE_COUNTER[k]);
+				  
+				  counter=counter+DRAW_HOLE_COUNTER[k];
+				 }
+				 // gl.deleteBuffer(pointArrayBuffer);
+                  //console.log(POINT_COUNT);
+
+                }
+
+                function update() {
+
+
+				if (i == 0) {
+                  //Drawing the target polygon
+				  
+				   var j=0;
+				 
+				 for(j=0;j<num_of_holes;j++)
+				 {	
+
+                    var TargetCoords = hole_data(1,j);
+
+                    TargetPolygon = new google.maps.Polygon({
+                      paths: TargetCoords,
+                      strokeColor: '#FF0000',
+                      strokeOpacity: 1,
+                      strokeWeight: 2,
+                      fillColor: '#FF0000',
+                      fillOpacity: 0.1
+                    });
+
+                    TargetPolygon.setMap(map);
+
+				}
+
+                    var TargetCoords = target_data(1);
+
+                    TargetPolygon = new google.maps.Polygon({
+                      paths: TargetCoords,
+                      strokeColor: '#FF0000',
+                      strokeOpacity: 1,
+                      strokeWeight: 2,
+                      fillColor: '#FF0000',
+                      fillOpacity: 0.0
+                    });
+
+                    TargetPolygon.setMap(map);
+
+                    var TargetCoords = initialPoly_data(1);
+
+                    TargetPolygon = new google.maps.Polygon({
+                      paths: TargetCoords,
+                      strokeColor: '#FF0000',
+                      strokeOpacity: 1,
+                      strokeWeight: 2,
+                      fillColor: '#FF0000',
+                      fillOpacity: 0.0
+                    });
+
+                    TargetPolygon.setMap(map);
+
+
+
+
+
+                   initial_data(); //initializing data
+				   updateData(); 
+                   
+                    
+                    i++;
+					tick();	
+                  }
+                 
+
+                }
+				
+			
+
+	function new_Data()//Function to add new data from textbox
+	{
+	var InitCoordInput=document.getElementById('initCoord').value;
+	InitCoordInput = InitCoordInput.replace(/(\r\n|\n|\r)/gm,"");
+	var HoleCoordInput=document.getElementById('holeCoord').value;
+	HoleCoordInput = HoleCoordInput.replace(/(\r\n|\n|\r)/gm,"");
+	var TarCoordInput=document.getElementById('tarCoord').value;
+	TarCoordInput =TarCoordInput.replace(/(\r\n|\n|\r)/gm,"");
+	//var new3=document.getElementById('tarCoord').value;
+	//console.log(new1);
+	
+	//var n=InitCoordInput.split(',');
+	//console.log(n);
+	InitPoly=InitCoordInput.split(',');
+	console.log(InitPoly);
+	
+	//n=TarCoordInput.split(',');
+	TargetPoly=TarCoordInput.split(',');
+	console.log(TargetPoly);
+	
+	var n=HoleCoordInput.split('#');
+	var c=0;
+	for(c=0;c<n.length;c++)
+	{
+	
+	HolePoly[c]=n[c].split(',');
+	}
+	console.log(HolePoly);
+	
+	
+	//TargetPoly=n.splice(0);
+	
+	init();
+	
+	
+	
+	}
+				
+
+                //document.addEventListener('DOMContentLoaded', init, false);
+              </script>
+ <script id="pointVertexShader" type="x-shader/x-vertex">
+    attribute vec4 worldCoord;
+    uniform mat4 mapMatrix;
+    
+    
+    varying vec3 vPosition;
+    
+    void main() {
+      
+      // transform world coordinate by matrix uniform variable
+      gl_Position = mapMatrix * worldCoord;
+      vPosition = worldCoord.xyz / worldCoord.w;
+      
+      //console.log(gl_Position);
+      
+      // a constant size for points, regardless of zoom level
+      gl_PointSize = 2.;
+      //vTex = tex.xyz/tex.w;
+    }
+  </script>
+  <script id="pointFragmentShader" type="x-shader/x-fragment">
+  
+	#ifdef GL_ES
+precision highp float;
+#endif
+
+//
+// Description : Array and textureless GLSL 2D/3D/4D simplex 
+//               noise functions.
+//      Author : Ian McEwan, Ashima Arts.
+//  Maintainer : ijm
+//     Lastmod : 20110813 (stegu)
+//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+//               Distributed under the MIT License. See LICENSE file.
+// 
+
+vec3 mod289(vec3 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
+
+vec4 mod289(vec4 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
+
+vec4 permute(vec4 x) {
+     return mod289(((x*34.0)+1.0)*x);
+}
+
+vec4 taylorInvSqrt(vec4 r)
+{
+  return 1.79284291400159 - 0.85373472095314 * r;
+}
+
+float snoise(vec3 v)
+{ 
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+// First corner
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+// Other corners
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+
+  //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+  //   x1 = x0 - i1  + 1.0 * C.xxx;
+  //   x2 = x0 - i2  + 2.0 * C.xxx;
+  //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+
+// Permutations
+  i = mod289(i); 
+  vec4 p = permute( permute( permute( 
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+// Gradients: 7x7 points over a square, mapped onto an octahedron.
+// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+  float n_ = 0.142857142857; // 1.0/7.0
+  vec3  ns = n_ * D.wyz - D.xzx;
+
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+
+  //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+  //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+
+//Normalise gradients
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+// Mix final noise value
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                dot(p2,x2), dot(p3,x3) ) );
+} 
+  
+    precision mediump float;
+    
+    varying vec3 vPosition;
+	uniform float time;
+	
+	
+    
+    void main() {
+	float count=0.0;
+	
+      if(vPosition.z==0.0)
+	  { 
+	  float t = time;
+	  float rf = 405.4;
+		float gf = 1022.0;
+		float bf = 300.0;
+		float value = snoise(vec3(-gl_FragCoord.x,t, -gl_FragCoord.y ));
+		
+		
+	if(mod(count,10.0)==0.0)
+{	
+	 
+		count=count+1.0;
+}
+	 //float r = (sin(radians(value*rf+100.0*t)) +1.0)/2.0;
+	//  float g = (sin(radians(value*gf+100.0*t)) +1.0);
+      float b = (cos(radians(value*bf+t)) +1.0);
+  //gl_FragColor = vec4(r,r+g/b,r,1);
+  
+  //float bValue=pow(r,10.0)+r;
+  
+  if(b<0.4)
+  b=0.4;
+  
+  gl_FragColor = vec4(0,0,b,0.8);
+	  
+	  /*
+	  float r=sin(gl_FragCoord.x+gl_FragCoord.x);
+	  
+	  if(r<0.0)
+	  r=-r;
+	  if(r<0.4)
+	  r=0.4;
+	  */
+      //  gl_FragColor = vec4( 0.0,  0.0,  1.0,  0.7 );
+      }
+    }
+	
+	
+	
+	
+  </script>
+  </head>
+  
+  <body>
+   
+	<div id="control-div">
+	<h1>Control Panel</h1>
+	
+	 <textarea rows="10" cols="30" id="initCoord" name="intialCoords">Enter initial Coordinates here seperated by comma as a 1D array e.g. lat1,lng1,lat2,lng2...
+	 </textarea>
+	  <textarea rows="10" cols="50" id="holeCoord" name="holeCoords">Enter Hole Coordinates here seperated by comma as a 1D array e.g. lat1,lng1,lat2,lng2...
+	  To enter multiple holes, seperate them by using # e.g. hole0_lat1,hole0_lng1,hole0_lat2,hole0_lng2,....#hole1_lat1,hole1_lng1,hole1_lat2,hole1_lng2,....
+	 </textarea>
+	 	  <textarea rows="10" cols="50" id="tarCoord" name="targetCoords">Enter Target Coordinates here seperated by comma as a 1D array e.g. lat1,lng1,lat2,lng2...	  
+	 </textarea>
+
+	<br/>
+	<input id="Start" type="button" value="Use Default Data and Start" onclick="init();" />
+	<input id="Display" type="button" value="Use new data and Start" onclick="new_Data();" />
+	
+	
+	
+	
+	</div>
+	
+	 <div
+    id="map-div">
+    </div>
+	
+  </body>
+  
+</html>

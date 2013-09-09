@@ -1,0 +1,705 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>IFC : Demo Polygon Morph</title>
+    <style>
+      html, body, #map-div {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+    </style>
+
+    <script src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+    <script src="CanvasLayer.js"></script>
+	<script type="text/javascript" src="webgl-utils.js"></script>
+	<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+		<script type="text/javascript" src="polyk.js"></script>
+
+    <script>
+      var map;
+      var canvasLayer;
+      var gl;
+
+      var pointProgram;
+      var pointArrayBuffer,squareVertexPositionBuffer;
+      var POINT_COUNT = 21;
+
+      var MIN_X = 40;
+      var MAX_X = 80;
+      var MIN_Y = 88;
+      var MAX_Y = 109;
+	  
+	  var RegionCoords1;
+	  var TargetCoords1;
+	  
+	 var RegionCoords0 = [            
+			new google.maps.LatLng(24.728746,87.951393),
+			new google.maps.LatLng(24.703172,87.955856),
+			new google.maps.LatLng(24.69132,87.961349),			
+			new google.maps.LatLng(24.685393,87.970276),
+			new google.maps.LatLng(24.675722,87.984695),
+			new google.maps.LatLng(24.661058,88.007698),
+			new google.maps.LatLng(24.664506,88.030701),
+			new google.maps.LatLng(24.645783,88.023491),
+			new google.maps.LatLng(24.641244,88.013191),
+			new google.maps.LatLng(24.642804,87.996197),
+			new google.maps.LatLng(24.651854,87.977142),
+			new google.maps.LatLng(24.661994,87.973366),
+			new google.maps.LatLng(24.672446,87.963066),
+			new google.maps.LatLng(24.682585,87.957401),
+			new google.maps.LatLng(24.68664,87.954998),
+			new google.maps.LatLng(24.696934,87.944698),
+			new google.maps.LatLng(24.715804,87.936287),
+			new google.maps.LatLng(24.724848,87.936802),
+			new google.maps.LatLng(24.731085,87.935085),
+			new google.maps.LatLng(24.728746,87.951393)
+		
+        ];
+       
+		
+
+      var pixelsToWebGLMatrix = new Float32Array(16);
+      var mapMatrix = new Float32Array(16);
+
+      function init() {
+        // initialize the map
+        var mapOptions = {
+          zoom: 11,
+          center: new google.maps.LatLng(24.663824,88.015782),
+          mapTypeId: google.maps.MapTypeId.SATELLITE,
+          styles: [
+            {
+              featureType: 'water',
+              stylers: [{ color: '#c3cfdd'}]
+            },
+            {
+              featureType: 'poi',
+              stylers: [{visibility: 'off'}]
+            }
+          ]
+        };
+        var mapDiv = document.getElementById('map-div');
+        map = new google.maps.Map(mapDiv, mapOptions);
+
+        // initialize the canvasLayer
+        var canvasLayerOptions = {
+          map: map,
+          resizeHandler: resize,
+          animate: false,
+          updateHandler: update
+        };
+        canvasLayer = new CanvasLayer(canvasLayerOptions);
+
+        // initialize WebGL
+        gl = canvasLayer.canvas.getContext('experimental-webgl');
+
+        createShaderProgram();
+       
+      }
+
+      function createShaderProgram() {
+        // create vertex shader
+        var vertexSrc = document.getElementById('pointVertexShader').text;
+        var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexSrc);
+        gl.compileShader(vertexShader);
+
+        // create fragment shader
+        var fragmentSrc = document.getElementById('pointFragmentShader').text;
+        var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentSrc);
+        gl.compileShader(fragmentShader);
+
+        // link shaders to create our program
+        pointProgram = gl.createProgram();
+        gl.attachShader(pointProgram, vertexShader);
+        gl.attachShader(pointProgram, fragmentShader);
+        gl.linkProgram(pointProgram);
+        gl.useProgram(pointProgram);
+      }
+
+      // linear interpolate between a and b
+      function lerp(a, b, t) {
+        return a + t * (b - a);
+      }
+
+function load_in_gl(rawData2)
+	  {
+	  		
+        // create webgl buffer, bind it, and load rawData into it
+        pointArrayBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, rawData2, gl.STATIC_DRAW);
+		
+		
+		
+
+        // enable the 'worldCoord' attribute in the shader to receive buffer
+        var attributeLoc = gl.getAttribLocation(pointProgram, 'worldCoord');
+        gl.enableVertexAttribArray(attributeLoc);
+
+        // tell webgl how buffer is laid out (pairs of x,y coords)
+        gl.vertexAttribPointer(attributeLoc, 2, gl.FLOAT, false, 0, 0);
+		
+		  
+	  
+	  
+	  }	  
+	  
+	  
+function computePolygonCentroid(vertices,vertexCount)
+{
+    var centroid = [0, 0];
+    var signedArea = 0.0;
+    var x0 = 0.0; // Current vertex X
+    var y0 = 0.0; // Current vertex Y
+    var x1 = 0.0; // Next vertex X
+    var y1 = 0.0; // Next vertex Y
+    var a = 0.0;  // Partial signed area
+
+    // For all vertices except last
+    var i=0;
+    for (i=0; i<vertexCount-1; ++i)
+    {
+        x0 = vertices[i].x;
+        y0 = vertices[i].y;
+        x1 = vertices[i+1].x;
+        y1 = vertices[i+1].y;
+        a = x0*y1 - x1*y0;
+        signedArea += a;
+        centroid[0] += (x0 + x1)*a;
+        centroid[1] += (y0 + y1)*a;
+    }
+
+    // Do last vertex
+    x0 = vertices[i].x;
+    y0 = vertices[i].y;
+    x1 = vertices[0].x;
+    y1 = vertices[0].y;
+    a = x0*y1 - x1*y0;
+    signedArea += a;
+     centroid[0] += (x0 + x1)*a;
+        centroid[1] += (y0 + y1)*a;
+
+    signedArea *= 0.5;
+    centroid[0] /= (6.0*signedArea);
+    centroid[1] /= (6.0*signedArea);
+
+    return centroid;
+}	  
+
+
+
+function Coords(x,y)//function to create coordinate object
+		{
+		this.x=x;
+		this.y=y;
+		
+		
+		}
+
+  
+  
+var centroid1;
+	  
+function initial_data()
+{	 
+        var mapProjection = map.getProjection();
+		
+		
+
+	
+			RegionCoords1 = [            
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.728746,87.951393)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.703172,87.955856)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.69132,87.961349)),			
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.685393,87.970276)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.675722,87.984695)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.661058,88.007698)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.664506,88.030701)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.645783,88.023491)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.641244,88.013191)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.642804,87.996197)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.651854,87.977142)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.661994,87.973366)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.672446,87.963066)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.682585,87.957401)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.68664,87.954998)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.696934,87.944698)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.715804,87.936287)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.724848,87.936802)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.731085,87.935085)),
+			map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.728746,87.951393))
+		
+        ];
+		
+		/*Now we will increase the number of points to somewhere 10 times of current coordinates so that to smooothen the morphing.
+		The points are increased by calculating and adding midpoints of the given coordinates of the polygon		
+		*/
+		var RegionCoords3=RegionCoords1.slice(0);
+		var i,j,k;
+		var RegionCoords2=[];
+		for(i=0;i<3;i++)
+		{
+			for(j=0,k=0;j<(RegionCoords3.length-1);j++,k+2)
+			{
+			var oldCoord=new Coords(RegionCoords3[j].x,RegionCoords3[j].y);		
+			RegionCoords2.push(oldCoord);
+			var newCoord=new Coords((RegionCoords3[j].x+RegionCoords3[j+1].x)/2, (RegionCoords3[j].y+RegionCoords3[j+1].y)/2);
+			RegionCoords2.push(newCoord);
+			}
+		
+		RegionCoords3=RegionCoords2.slice(0);
+		RegionCoords2.length=0;
+		}
+		RegionCoords1=RegionCoords3.slice(0);
+
+return RegionCoords1;
+}	  
+
+
+//This function returns target polygon data and value of x determines that wether the returned data should be in lat lng form or mercartor projections
+function target_data(x)
+{	 
+        var mapProjection = map.getProjection();
+       
+
+			TargetCoords1 = [            
+		new google.maps.LatLng(24.832857,87.937317),
+new google.maps.LatLng(24.8179,87.984009),
+new google.maps.LatLng(24.789228,88.001862),
+new google.maps.LatLng(24.756808,88.004608),
+new google.maps.LatLng(24.734359,88.04306),
+new google.maps.LatLng(24.718143,88.113098),
+new google.maps.LatLng(24.701925,88.161163),
+new google.maps.LatLng(24.681961,88.207855),
+new google.maps.LatLng(24.632038,88.236694),
+new google.maps.LatLng(24.58709,88.233948),
+new google.maps.LatLng(24.550871,88.217468),
+new google.maps.LatLng(24.533382,88.129578),
+new google.maps.LatLng(24.510892,87.95929),
+new google.maps.LatLng(24.527135,87.893372),
+new google.maps.LatLng(24.615809,87.883759),
+new google.maps.LatLng(24.740595,87.864532),
+new google.maps.LatLng(24.815407,87.878265),
+new google.maps.LatLng(24.832857,87.937317),
+new google.maps.LatLng(24.832857,87.937317)
+        ];
+		
+		
+	var TargetCoords2=[		
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.832857,87.937317)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.8179,87.984009)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.789228,88.001862)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.756808,88.004608)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.734359,88.04306)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.718143,88.113098)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.701925,88.161163)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.681961,88.207855)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.632038,88.236694)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.58709,88.233948)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.550871,88.217468)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.533382,88.129578)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.510892,87.95929)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.527135,87.893372)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.615809,87.883759)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.740595,87.864532)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.815407,87.878265)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.832857,87.937317)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.832857,87.937317))	
+	];
+			if(x==1)
+			return TargetCoords1;
+			else return TargetCoords2;
+}	  
+
+
+function hole_data(x)
+{	 
+        var mapProjection = map.getProjection();
+       
+
+			HoleCoords1 = [            
+		new google.maps.LatLng(24.595831,88.026581),
+new google.maps.LatLng(24.584593,88.003235),
+new google.maps.LatLng(24.558365,88.005981),
+new google.maps.LatLng(24.559614,88.0513),
+new google.maps.LatLng(24.579597,88.073273),
+new google.maps.LatLng(24.605821,88.0513),
+new google.maps.LatLng(24.595831,88.026581)
+        ];
+		
+		
+	var HoleCoords2=[		
+
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.595831,88.026581)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.584593,88.003235)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.558365,88.005981)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.559614,88.0513)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.579597,88.073273)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.605821,88.0513)),
+map.getProjection().fromLatLngToPoint(new google.maps.LatLng(24.595831,88.026581))	
+
+		
+	];
+	
+			if(x==1)
+			return HoleCoords1;
+			else return HoleCoords2;
+}	  
+
+
+
+
+
+/*
+funtion isPointInPoly Adapted from: [http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html] 
+*/
+
+
+function isPointInPoly( pt,poly){
+	for(var c = false, i = -1, l = poly.length, j = l - 1; ++i < l; j = i)
+		((poly[i].y <= pt.y && pt.y < poly[j].y) || (poly[j].y <= pt.y && pt.y < poly[i].y))
+		&& (pt.x < (poly[j].x - poly[i].x) * (pt.y - poly[i].y) / (poly[j].y - poly[i].y) + poly[i].x)
+		&& (c = !c);
+	return c;
+}
+
+
+	
+//Function loaddata converts data from object form to simple array of vertices and then calculates the triangulation	
+var debug_counter=0;  
+function loadData(CoordArray) 
+	{
+    
+	var num_coods=CoordArray.length;
+	var j=0;
+	var rawData2 = new Float32Array(2*num_coods+2);
+	
+	for (var i = 0,j=0; j < CoordArray.length; i += 2,j+=1) 
+		{
+          rawData2[i] = CoordArray[j].x;
+          rawData2[i + 1] = CoordArray[j].y;
+		}
+	
+	var triangulated_indices = PolyK.Triangulate(rawData2);
+	var triangulatedData = new Float32Array(2*(triangulated_indices.length-1));
+	POINT_COUNT=triangulated_indices.length-1;
+	for (var i = 0,j=0; j < triangulated_indices.length-1; i += 2,j+=1)
+	{
+	triangulatedData[i]=CoordArray[triangulated_indices[j]].x;
+	triangulatedData[i+1]=CoordArray[triangulated_indices[j]].y;
+	
+
+	}
+	return triangulatedData;
+    }
+	  
+    
+function resize() {
+        var width = canvasLayer.canvas.width;
+        var height = canvasLayer.canvas.height;
+
+        gl.viewport(0, 0, width, height);
+
+        // matrix which maps pixel coordinates to WebGL coordinates
+        pixelsToWebGLMatrix.set([2/width, 0, 0, 0, 0, -2/height, 0, 0,
+            0, 0, 0, 0, -1, 1, 0, 1]);
+      }
+
+      function scaleMatrix(matrix, scaleX, scaleY) {
+        // scaling x and y, which is just scaling first two columns of matrix
+        matrix[0] *= scaleX;
+        matrix[1] *= scaleX;
+        matrix[2] *= scaleX;
+        matrix[3] *= scaleX;
+
+        matrix[4] *= scaleY;
+        matrix[5] *= scaleY;
+        matrix[6] *= scaleY;
+        matrix[7] *= scaleY;
+      }
+
+      function translateMatrix(matrix, tx, ty) {
+        // translation is in last column of matrix
+        matrix[12] += matrix[0]*tx + matrix[4]*ty;
+        matrix[13] += matrix[1]*tx + matrix[5]*ty;
+        matrix[14] += matrix[2]*tx + matrix[6]*ty;
+        matrix[15] += matrix[3]*tx + matrix[7]*ty;
+      }
+	  
+		
+	
+	/*
+	This function brings changes to geometry of the polygon which are responsible for the morphing effect.
+	For morphing the code is calculating a point on the perpendicular bisector of the line joining two consecutive
+	verices. The point lies at distance "step" from the edge of the old polygon.
+	
+	In steps:
+	1. First the code calculate the midpoint of two consecutive vertice
+	2. Then it calculates slope of normal to the line joining two consecutive vertices
+	3. The using this slope, midpoint and equation of line, a point at distace "Step" away is calculated
+	4. Using these new points we form the new polygon
+	*/
+	
+	var testangle=1;
+	
+	function updateData()
+	{
+	
+	
+	var targetcoords=target_data(2);
+	var holecoords=hole_data(2);
+	var centroid=computePolygonCentroid(RegionCoords1,RegionCoords1.length);
+	
+	var step=0.0005;//This 
+	
+	var newCoords=[];
+	
+	
+	for(i=0;i<RegionCoords1.length;i++)
+	{
+	
+	var y,x,m,slope,x1,x2,y1,y2,c,j=0;;
+	
+	if(i==RegionCoords1.length-1)
+	j=0;
+	else
+	j=i+1;
+	
+	 y=(RegionCoords1[i].y+RegionCoords1[j].y)/2;
+	 x=(RegionCoords1[i].x+RegionCoords1[j].x)/2;
+	 
+	if((RegionCoords1[i].x-RegionCoords1[j].x)!=0)
+	{
+	slope=(RegionCoords1[i].y-RegionCoords1[j].y)/(RegionCoords1[i].x-RegionCoords1[j].x);
+	}
+	else
+	{
+	slope=0;
+	}
+	 m=-1/slope; //slope of normal
+	 
+	 x1=x+step*Math.cos(Math.atan(m));//Two x are calculated because there will be two points at distance step, one inside the current polygon and one outside.
+	 x2=x-step*Math.cos(Math.atan(m));	 
+	 c=y-m*x;
+	 y1=m*x1+c;
+	 y2=m*x2+c;
+	
+	
+	
+	var newCoord1=new Coords(x1,y1,0,0);
+	var newCoord2=new Coords(x2,y2,0,0);
+	var newPoint;
+	
+	if(isPointInPoly(newCoord1,RegionCoords1) && isPointInPoly(newCoord2,RegionCoords1))//This avoide formation of complex polygons
+	{		
+	continue;	
+	}
+	
+	
+	
+	if(isPointInPoly(newCoord1,RegionCoords1))//We take the point which is outside the current polygon
+	{
+		newCoord1.x=newCoord2.x;
+		newCoord1.y=newCoord2.y;
+	}
+	
+	if( isPointInPoly(newCoord1,targetcoords) &&  !(isPointInPoly(newCoord1,holecoords)) )//Is new point inside the target polygon, if yes we add it
+	{
+	newCoords.push(newCoord1);
+	}
+	else
+	{
+	RegionCoords1[i].over=true;
+	newCoords.push(RegionCoords1[i]);
+	}
+		
+	}
+	
+	//console.log(newCoords);
+	RegionCoords1=newCoords.splice(0);
+	
+	
+	
+	for(i=0;i<RegionCoords1.length;i++)
+	{
+    if(i==RegionCoords1.length-1)
+	j=0;
+	else
+	j=i+1;
+	var delete_distance=0.001;
+	if( Math.sqrt(Math.pow(RegionCoords1[i].y-RegionCoords1[j].y,2)+Math.pow(RegionCoords1[i].x-RegionCoords1[j].x,2)) < delete_distance)
+	{	
+	RegionCoords1.splice(i,1);
+	continue;
+	}
+
+	//If two consecutive points are too far away in the polygon, we add a point to smoothen the morphing
+	var add_distance=0.01;
+	if( Math.sqrt(Math.pow(RegionCoords1[i].y-RegionCoords1[j].y,2)+Math.pow(RegionCoords1[i].x-RegionCoords1[j].x,2)) > add_distance)
+	{
+	y=(RegionCoords1[i].y+RegionCoords1[j].y)/2;
+	x=(RegionCoords1[i].x+RegionCoords1[j].x)/2;
+	var newCoord1=new Coords(x,y,0,0);
+	RegionCoords1.splice(j,0,newCoord1);
+	i++;
+	}
+	
+	
+	
+		
+	}
+	
+	
+}
+
+
+	
+	  var debug_counter=0;
+	  function tick() {
+        requestAnimFrame(tick);
+		updateData();
+        var converted_coord=loadData(RegionCoords1);		
+		load_in_gl(converted_coord);
+		drawScene();
+    }
+	  
+	  
+	  
+	  var i=0;	  
+	  function drawScene()
+	  {
+	  	
+		
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
+        var mapProjection = map.getProjection();
+
+        /**
+         * We need to create a transformation that takes world coordinate
+         * points in the pointArrayBuffer to the coodinates WebGL expects.
+         * 1. Start with second half in pixelsToWebGLMatrix, which takes pixel
+         *     coordinates to WebGL coordinates.
+         * 2. Scale and translate to take world coordinates to pixel coords
+         * see https://developers.google.com/maps/documentation/javascript/maptypes#MapCoordinate
+         */
+        
+        // copy pixel->webgl matrix
+        mapMatrix.set(pixelsToWebGLMatrix);
+
+        // Scale to current zoom (worldCoords * 2^zoom)
+        var scale = Math.pow(2, map.zoom);
+        scaleMatrix(mapMatrix, scale, scale);
+
+        // translate to current view (vector from topLeft to 0,0)
+        var offset = mapProjection.fromLatLngToPoint(canvasLayer.getTopLeft());
+        translateMatrix(mapMatrix, -offset.x, -offset.y);
+
+        // attach matrix value to 'mapMatrix' uniform in shader
+        var matrixLoc = gl.getUniformLocation(pointProgram, 'mapMatrix');
+        gl.uniformMatrix4fv(matrixLoc, false, mapMatrix);
+
+        // draw!
+      gl.drawArrays(gl.POINTS, 0, POINT_COUNT);
+	//gl.drawArrays(gl.TRIANGLES, 0, POINT_COUNT);
+      //console.log(POINT_COUNT);
+	  
+	  }
+
+      function update() {
+
+	
+
+		if(i==0)
+		{
+		//Drawing the target polygon
+		
+		var TargetCoords=hole_data(1);
+
+	TargetPolygon = new google.maps.Polygon({
+    paths: TargetCoords,
+    strokeColor: '#FF0000',
+    strokeOpacity: 1,
+    strokeWeight: 2,
+    fillColor: '#FF0000',
+    fillOpacity: 0.1
+  });
+
+  TargetPolygon.setMap(map);
+ 
+	var	TargetCoords=target_data(1);
+
+	TargetPolygon = new google.maps.Polygon({
+    paths: TargetCoords,
+    strokeColor: '#FF0000',
+    strokeOpacity: 1,
+    strokeWeight: 2,
+    fillColor: '#FF0000',
+    fillOpacity: 0.1
+  });
+
+  TargetPolygon.setMap(map);
+
+ var TargetCoords=RegionCoords0;
+
+	TargetPolygon = new google.maps.Polygon({
+    paths: TargetCoords,
+    strokeColor: '#FF0000',
+    strokeOpacity: 1,
+    strokeWeight: 2,
+    fillColor: '#FF0000',
+    fillOpacity: 0.1
+  });
+
+  TargetPolygon.setMap(map); 
+  
+  
+  
+  
+  
+  
+  
+  
+		var coord=initial_data();
+		var converted_coord=loadData(coord);
+		load_in_gl(converted_coord);
+		drawScene();
+		i++;
+        }
+		tick();
+	
+	  }
+
+      document.addEventListener('DOMContentLoaded', init, false);
+    </script>
+
+    <script id="pointVertexShader" type="x-shader/x-vertex">
+      attribute vec4 worldCoord;
+
+      uniform mat4 mapMatrix;
+
+      void main() {
+        // transform world coordinate by matrix uniform variable
+        gl_Position = mapMatrix * worldCoord;
+
+        // a constant size for points, regardless of zoom level
+        gl_PointSize = 4.;
+      }
+    </script>
+    <script id="pointFragmentShader" type="x-shader/x-fragment">
+      precision mediump float;
+
+      void main() {
+        
+        gl_FragColor = vec4( 0.0,  0.0,  1.0,  0.7 );
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="map-div"></div>
+  </body>
+</html>
