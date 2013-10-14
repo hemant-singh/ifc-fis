@@ -1,4 +1,4 @@
-       var map;
+								var map;
                                 var canvasLayer;
                                 var gl;
 
@@ -19,8 +19,44 @@
 								var deleted_object_array=[];
 								var deleted_object_counter=0;
 								var MinX,MaxX,MinY,MaxY; //Used for texture mapping
-								var canvas;						
+								var canvas;	
+								var Zoomlevel,mapObject;		
 								
+								//Next two variables are used in fragment shader
+								var waveWidth=3.9;		
+								var waveFrequency=1.6;
+								var Parameter1=10.0;
+								var Parameter2=0.03;
+								var speed=22.0;
+		
+								
+								//Sunctions which take value for shader parameters
+								 function updateFrequencyInput(val) {
+								  waveFrequency=val; 
+								   document.getElementById('waveFrequency').innerText="Frequency = "+val; 
+								}
+								
+								function updateWidthInput(val) {
+								  waveWidth=val; 
+								  document.getElementById('waveWidth').innerText="Width = "+val; 
+								}
+								
+								function updateParameter1Input(val) {
+								  Parameter1=val; 
+								  document.getElementById('Parameter1').innerText="Parameter1 = "+val; 
+								}
+								
+							/*	function updateParameter2Input(val) {
+								  Parameter2=val; 
+								  document.getElementById('Parameter2').innerText="Parameter2 = "+val; 
+								}
+								
+								function updateSpeedInput(val) {
+								  Speed=val; 
+								  document.getElementById('Speed').innerText="Speed = "+val; 
+								}
+								
+								*/
 								var image = new Image();
 								
 								function loadImage(texData) {
@@ -68,6 +104,11 @@
                                         animate: false,
                                         updateHandler: update
                                     };
+									
+									
+									//mapObject = new google.maps.Map(mapDiv, mapOptions);
+									
+									
                                     canvasLayer = new CanvasLayer(canvasLayerOptions);
 
                                     // initialize WebGL
@@ -78,14 +119,15 @@
                                     createShaderProgram();
 									console.log("here");
 									
-									var polyOptions = {
+									var polyOptions = 
+									{
 										  
 										  fillOpacity: 0.5,
 										  strokeColor: '#5E2612',
                                             strokeOpacity: 1,
                                             strokeWeight: 2,
 										  
-										};
+									};
 										// Creates a drawing manager attached to the map that allows the user to draw
 										// markers, lines, and shapes.
 										drawingManager = new google.maps.drawing.DrawingManager({
@@ -208,6 +250,12 @@
 										gl.bindBuffer(gl.ARRAY_BUFFER, pointArrayBuffer);
 										pointProgram.pTimeUniform = gl.getUniformLocation(pointProgram, "time");
 										pointProgram.pResolutionUniform = gl.getUniformLocation(pointProgram, "resolution");
+										pointProgram.pwaveWidthUniform = gl.getUniformLocation(pointProgram, "frequency");
+										pointProgram.pwaveFrequencyUniform = gl.getUniformLocation(pointProgram, "width");
+										pointProgram.pParameter1Uniform = gl.getUniformLocation(pointProgram, "Parameter1");
+										pointProgram.pParameter2Uniform = gl.getUniformLocation(pointProgram, "Parameter2");
+										pointProgram.pZoomUniform = gl.getUniformLocation(pointProgram, "zoom");
+										pointProgram.pSpeedUniform = gl.getUniformLocation(pointProgram, "speed");
 									}
                                     
                                     gl.bufferData(gl.ARRAY_BUFFER, rawData2, gl.STATIC_DRAW);
@@ -219,7 +267,17 @@
 
                                     
                                     var time = (new Date()).getTime();
+									var zoom=map.getZoom();
+									//console.log(zoom);
                                     gl.uniform1f(pointProgram.pTimeUniform, (time - startTime) / 1000.0);
+                                    gl.uniform1f(pointProgram.pwaveWidthUniform, waveWidth);
+                                    gl.uniform1f(pointProgram.pwaveFrequencyUniform, waveFrequency);
+									gl.uniform1f(pointProgram.pParameter1Uniform, Parameter1);
+									//console.log(Parameter2);
+									gl.uniform1f(pointProgram.pParameter2Uniform, Parameter2);
+                                    gl.uniform1f(pointProgram.pZoomUniform, zoom);
+                                    gl.uniform1f(pointProgram.pSpeedUniform, Speed);
+                                    
 									gl.uniform2f(pointProgram.pResolutionUniform, canvas.width, canvas.height);
                                 }
 								
@@ -334,7 +392,94 @@ The points are increased by calculating and adding midpoints of the given coordi
                                     }
                                     return triangulatedData;
                                 }
+								
+								
+								
+                                function loadData1(CoordArray)
+                                {
 
+                                    var num_coods = CoordArray.length;
+                                    var j = 0;
+                                    var rawData2 = new Float32Array(2 * num_coods + 2);
+
+                                    for (var i = 0, j = 0; j < CoordArray.length; i += 3, j += 1)
+                                    {
+                                        rawData2[i] = CoordArray[j].x;
+                                        rawData2[i + 1] = CoordArray[j].y;
+                                        rawData2[i + 2] = CoordArray[j].z;
+                                    }
+
+                                  
+                                    return rawData2;
+                                }
+								
+								
+									
+								
+								
+								
+								/*
+								function reduce_polygon(flag1,Coord,PCoords)
+								{
+								console.log("flaaag"+flag1);
+								var newCoords=[];
+								var i=0;
+								var flag2=-1;
+								for(i=0;i<PCoords.length ;i++)
+								{
+								if(i+10==flag1)
+								{
+								i=flag1+10;
+								continue;
+								}
+								
+								if(distance(Coord,PCoords[i])<0.05)
+								{
+								console.log("1111");
+								var pt=new Coords((Coord.x+PCoords[i].x)/2,(Coord.y+PCoords[i].y)/2);
+								if(!isPointInPoly(pt,PCoords))
+								{
+								console.log("dnfcjlkazbf");
+								flag2=i;
+								break;
+								}
+								}	
+								}
+								
+								if(flag2==-1)
+								{
+								console.log("heya");
+								return PCoords;
+								}
+								
+								console.log("happy1");
+								var exc;
+								if(flag1>flag2)
+								{
+								exc=flag2;
+								flag2=flag1;
+								flag=exc;
+								
+								}
+								console.log(flag1,flag2,i);	
+								for(i=0;i<PCoords.length;i++)
+								{
+								newCoords[i]=PCoords[i];
+								if(i==flag1)
+								i=flag2+1;
+								
+								
+								}
+								console.log("happy2");
+								return newCoords;
+								
+								
+								}
+								
+								
+								
+								
+*/
                                
 /*
 This function brings changes to geometry of the polygon which are responsible for the morphing effect.
@@ -349,6 +494,7 @@ In steps:
 */
 
                                // var testangle = 1;
+							   
 								var step = 0.0005;
                                 var area_diff = 0; //this variabvle stores the amount of area covered by morphing polygon in percentage and is used to stop animation
 
@@ -356,20 +502,20 @@ In steps:
                                 {
                                     var targetcoords = target_data(2);
 
-                                    var holecoords = hole_data(2, 0);
-                                    var holecoords1 = hole_data(2, 1);
+                                   
                                     var targetcoordsForArea = target_data(3);
                                     var centroid = computePolygonCentroid(RegionCoords1, RegionCoords1.length);
-                                    
+										
                                     //This 
                                     var newCoords = [];
+                                    
                                     var counter = 0;
                                     var arrayForArea = [] //This array is used for calculating area in the end
                                     //var i1=0;//this counter is used for area array increment
 									//var start = new Date().getTime();
                                     for (i = 0; i < RegionCoords1.length; i++)
                                     {
-                                        var y, x, m, slope, x1, x2, y1, y2, c, j = 0;
+                                        var y, x, m, slope, x1, x2, y1, y2,s1,s2,t1,t2, c, j = 0;
 										if(RegionCoords1[i].over==true)
 										{
 										newCoords.push(RegionCoords1[i]);
@@ -401,36 +547,42 @@ In steps:
                                         var newCoord1 = new Coords(x1, y1);
                                         var newCoord2 = new Coords(x2, y2);
                                         var newPoint;
-
-                                        if (isPointInPoly(newCoord1, RegionCoords1) && isPointInPoly(newCoord2, RegionCoords1)) //This avoide formation of complex polygons
+										
+										
+										s1 = x + 4*step * Math.cos(Math.atan(m));
+                                        //Two x are calculated because there will be two points at distance step, one inside the current polygon and one outside.
+                                        s2 = x - 4*step * Math.cos(Math.atan(m));
+                                        c = y - m * x;
+                                        t1 = m * s1 + c;
+                                        t2 = m * s2 + c;
+										
+										var newCoord3 = new Coords(s1, t1);
+                                        var newCoord4 = new Coords(s2, t2);
+										
+                                        /*if (isPointInPoly(newCoord3, RegionCoords1) && isPointInPoly(newCoord4, RegionCoords1)) //This avoide formation of complex polygons
                                         {
-                                            //console.log("fass gaye :D");
-                                            continue;
-                                        }
+										console.log("fass gaye :D");
+										RegionCoords1=reduce_polygon(i,RegionCoords1[i],RegionCoords1);
+                                          console.log("fass gaye111111111 :D");  
+											continue;
+											//play_pause_moprhing();
+                                            //continue;
+                                        }*/
                                         if (isPointInPoly(newCoord1, RegionCoords1)) //We take the point which is outside the current polygon
                                         {
                                             newCoord1.x = newCoord2.x;
                                             newCoord1.y = newCoord2.y;
                                         }
 
-                                        if (isPointInPoly(newCoord1, targetcoords)) //Is new point inside the target polygon, if yes we add it
-                                        {
-                                            newCoords.push(newCoord1);
-                                            arrayForArea[2 * i] = newCoord1.x;
-                                            arrayForArea[2 * i + 1] = newCoord1.y;
+                                        if (isPointInPoly(newCoord1, targetcoords) && !isPointInHoles(newCoord1) ) //Is new point inside the target polygon, if yes we add it
+									{
+									  newCoords.push(newCoord1);
+									} else {
 
-                                        }
-                                        else
-                                        {
 
-                                            //var NearestCoordOnEdge=PolyK.ClosestEdge (targetcoordsForArea,RegionCoords1[i].x,RegionCoords1[i].y);	
-                                            //newCoords.push(NearestCoordOnEdge.point);	
-                                            counter++;
-                                            RegionCoords1[i].over = true;
-                                            arrayForArea[2 * i] = RegionCoords1[i].x;
-                                            arrayForArea[2 * i + 1] = RegionCoords1[i].y;
-                                            newCoords.push(RegionCoords1[i]);
-                                        }
+									  RegionCoords1[i].over = true;
+									  newCoords.push(RegionCoords1[i]);
+									}
 
                                     }
 
@@ -464,6 +616,11 @@ In steps:
                                             i++;
                                         }
                                     }
+									
+									check_close_points(RegionCoords1);
+									
+									
+									
 									//var mid2 = new Date().getTime();
 									//time1=mid1-start;
 									//time2=mid2-mid1;
@@ -524,11 +681,14 @@ In steps:
 								
 								function start_moprhing()
 								{
-								console.log(deleted_object_array);
+								console.log("hi"+deleted_object_array);
 								attach_objects();
 								setOrderOfVertices();
+								loadHoledata();	
 								initial_data(); //initializing data
+								
                                         updateData();
+										
                                         i++;
                                         tick();
 								
@@ -668,6 +828,7 @@ In steps:
                                 {
                                     if (i == 0)
                                     {
+									
                                         //Drawing the target polygon
                                         var j = 0;
 
@@ -724,7 +885,9 @@ In steps:
 										 MinX=minMax[0];
 										 MinY=minMax[1];
 										 MaxX=minMax[2];									 	
-										 MaxY=minMax[3];	
+										 MaxY=minMax[3];
+
+											
 										
                                         
                                     }

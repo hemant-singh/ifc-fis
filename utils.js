@@ -49,16 +49,55 @@
 								function convert_obeject_data(data)//This function extracts lat lng from drawn objects
                                 {
 								var Coords1 = [];
-                                        console.log(data);
-                                    for (i = 0,j=0; i < data.length; i++,j=j+2)
+                                    console.log("Google coords"+data);
+                                    for (i = 0,j=0; i < data.length; i++)
                                     {
-                                        Coords1[j]=data[i].lb;
-                                        Coords1[j+1]=data[i].mb;
+									
+									for (var key in data[i]) {
+										 if (data[i].hasOwnProperty(key)) {
+											Coords1[j++]=data[i][key];
+										  }
+										
+									  
+									}
+                                       
                                     }
+									
 									return Coords1;
                                     
                                 }
 								
+								
+								function isPointInHoles(pt)
+								{
+								var i=0,c=HolePoly.length;
+											
+								for(i=0;i<c;i++)
+								{
+								if(isPointInPoly(pt,HoleData[i]))
+								return true;
+								
+								}
+								}
+								
+								
+								function distance(x1,x2)
+								{
+								return (Math.sqrt(Math.pow(x1.y - x2.y, 2) + Math.pow(x1.x - x2.x, 2)));
+								
+								}
+								
+								
+								var HoleData=[];
+								function loadHoledata(){
+								
+								var i=0,c=HolePoly.length;
+								for(i=0;i<c;i++)
+								{
+								HoleData[i]=hole_data(2, i);
+								}
+								console.log("loadingggg");
+								}
 								
 								function minMaxXY(coords)//Coords should be in Coords.x and Coords.Y format
 								{
@@ -178,6 +217,7 @@ funtion isPointInPoly Adapted from: [http://www.ecse.rpi.edu/Homepages/wrf/Resea
                                     this.x = x;
                                     this.y = y;
                                     this.z = 0;
+									
                                 }
 
                                 function holeCoords(x, y) //function to create coordinate object
